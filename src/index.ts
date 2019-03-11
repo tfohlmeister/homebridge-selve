@@ -16,12 +16,10 @@ export default function(homebridge: any) {
 
 class SelveAccessory {
   log: Function;
-  name: string;
   states: Array<CommeoState>;
 
   constructor(log, config) {
     this.log = log;
-    this.name = config["name"];
     this.states = new Array<CommeoState>();
 
     for(let channel = 1; channel<65; channel++) {
