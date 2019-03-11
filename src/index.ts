@@ -2,6 +2,8 @@ import callbackify from './util/callbackify';
 import { CommeoState } from './util/commeo-state';
 import { wait } from './util/wait';
 
+const SerialPort = require('serialport');
+const XmlDocument = require('xmldoc').XmlDocument;
 require("@babel/polyfill");
 const util = require("util");
 
@@ -17,11 +19,41 @@ export default function(homebridge: any) {
 class SelveAccessory {
   log: Function;
   states: Array<CommeoState>;
+  port: String;
+  baud: number = 115200;
+  activePort: typeof SerialPort;
+  informationService;
+  manufacturer: string;
+  model: string;
+  serial: string;
 
   constructor(log, config) {
     this.log = log;
-    this.states = new Array<CommeoState>();
+    this.manufacturer = config["manufacturer"] || "no manufacturer";
+    this.model = config["model"] || "Model not available";
+    this.serial = config["serial"] || "Non-defined serial";
 
+    // setup serial port
+    this.port = config["device"];
+    if (this.port === undefined) {
+      throw new Error('Option "device" needs to be set');
+    }
+    if (config["baud"]) {
+      this.baud = config["baud"];
+    }
+
+    const parser = new SerialPort.parsers.Delimiter({
+      delimiter: '</xml>'
+    });
+    this.activePort = new SerialPort(this.port, {
+      baudRate: this.baud
+    });
+    this.activePort.pipe(parser);
+    this.activePort.on('open', () => this.log('USB-RF port open'));
+    parser.on('data', this.parseXML.bind(this));
+
+    // setup services
+    this.states = new Array<CommeoState>();
     for(let channel = 1; channel<65; channel++) {
       const name = config[`channel${channel}`];
       if (name === undefined) continue;
@@ -48,10 +80,22 @@ class SelveAccessory {
 
       this.states.push(state);
     }
+
+    // setup info service
+    this.informationService = new Service.AccessoryInformation();
+    this.informationService
+      .setCharacteristic(Characteristic.Manufacturer, this.manufacturer)
+      .setCharacteristic(Characteristic.Model, this.model)
+      .setCharacteristic(Characteristic.SerialNumber, this.serial);
+  }
+
+  parseXML(data: String) {
+    const xml = XmlDocument(data);
+    console.log(xml);
   }
 
   getServices() {
-    return this.states.map(srv => srv.service);
+    return [this.informationService, ...this.states.map(srv => srv.service)];
   }
 
   getCurrentPosition = async (state: CommeoState) => {
@@ -67,11 +111,7 @@ class SelveAccessory {
 
     state.TargetPosition = newPosition;
 
-    /*if (state === Characteristic.LockTargetState.SECURED) {
-      throw new Error("Cannot close an open frunk.");
-    } else {
-      await api("openTrunk", options, tesla.FRUNK);
-    }*/
+    // TODO
 
     // We succeeded, so update the "current" state as well.
     // We need to update the current state "later" because Siri can't
