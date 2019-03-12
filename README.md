@@ -6,7 +6,8 @@ Example config.json:
       "accessories": [
         {
           "accessory": "Selve",
-          "port": "/dev/tty.usbserial-DM00BGGT",
+          "name": "Shutter",
+          "device": "/dev/tty.usbserial-DM00BGGT",
           "channel1": "Livingroom",
           "channel2": "Bathroom"
           ...

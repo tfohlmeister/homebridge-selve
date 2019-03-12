@@ -126,69 +126,66 @@ function callbackify(func) {
   };
 }
 
-var CommeoState = // percentage 0 - 100, READ, NOTIFY
-// percentage 0 - 100, READ, WRITE, NOTIFY
-// READ, NOTIFY
-// READ, NOTIFY
-function CommeoState(service) {
-  _classCallCheck(this, CommeoState);
+var CommeoState =
+/*#__PURE__*/
+function () {
+  // percentage 0 - 100, READ, NOTIFY
+  // percentage 0 - 100, READ, WRITE, NOTIFY
+  // READ, NOTIFY
+  // READ, NOTIFY
+  function CommeoState(channel, service) {
+    _classCallCheck(this, CommeoState);
 
-  _defineProperty(this, "CurrentPosition", void 0);
+    _defineProperty(this, "CurrentPosition", void 0);
 
-  _defineProperty(this, "TargetPosition", void 0);
+    _defineProperty(this, "TargetPosition", void 0);
 
-  _defineProperty(this, "PositionState", void 0);
+    _defineProperty(this, "PositionState", void 0);
 
-  _defineProperty(this, "ObstructionDetected", void 0);
+    _defineProperty(this, "ObstructionDetected", void 0);
 
-  _defineProperty(this, "service", void 0);
+    _defineProperty(this, "service", void 0);
 
-  this.CurrentPosition = -1;
-  this.TargetPosition = -1;
-  this.PositionState = CommeoPositionState.STOPPED;
-  this.ObstructionDetected = false;
-  this.service = service;
-};
+    _defineProperty(this, "channel", void 0);
+
+    this.CurrentPosition = 0;
+    this.TargetPosition = 0;
+    this.PositionState = HomebridgePositionState.STOPPED;
+    this.ObstructionDetected = false;
+    this.service = service;
+    this.channel = channel;
+  }
+
+  _createClass(CommeoState, [{
+    key: "toCommeoState",
+    value: function toCommeoState() {
+      if (this.CurrentPosition < this.TargetPosition) {
+        return CommeoPositionState.INCREASING;
+      } else if (this.CurrentPosition > this.TargetPosition) {
+        return CommeoPositionState.DECREASING;
+      } else {
+        return CommeoPositionState.STOPPED;
+      }
+    }
+  }]);
+
+  return CommeoState;
+}();
+var HomebridgePositionState;
+
+(function (HomebridgePositionState) {
+  HomebridgePositionState[HomebridgePositionState["DECREASING"] = 0] = "DECREASING";
+  HomebridgePositionState[HomebridgePositionState["INCREASING"] = 1] = "INCREASING";
+  HomebridgePositionState[HomebridgePositionState["STOPPED"] = 2] = "STOPPED";
+})(HomebridgePositionState || (HomebridgePositionState = {}));
+
 var CommeoPositionState;
 
 (function (CommeoPositionState) {
-  CommeoPositionState[CommeoPositionState["DECREASING"] = 0] = "DECREASING";
+  CommeoPositionState[CommeoPositionState["DECREASING"] = 2] = "DECREASING";
   CommeoPositionState[CommeoPositionState["INCREASING"] = 1] = "INCREASING";
-  CommeoPositionState[CommeoPositionState["STOPPED"] = 2] = "STOPPED";
+  CommeoPositionState[CommeoPositionState["STOPPED"] = 0] = "STOPPED";
 })(CommeoPositionState || (CommeoPositionState = {}));
-
-/*
- * Returns a Promise that waits for the given number of milliseconds
- * (via setTimeout), then resolves.
- */
-function wait() {
-  return _wait.apply(this, arguments);
-}
-
-function _wait() {
-  _wait = _asyncToGenerator(
-  /*#__PURE__*/
-  regeneratorRuntime.mark(function _callee() {
-    var ms,
-        _args = arguments;
-    return regeneratorRuntime.wrap(function _callee$(_context) {
-      while (1) {
-        switch (_context.prev = _context.next) {
-          case 0:
-            ms = _args.length > 0 && _args[0] !== undefined ? _args[0] : 0;
-            return _context.abrupt("return", new Promise(function (resolve) {
-              setTimeout(resolve, ms);
-            }));
-
-          case 2:
-          case "end":
-            return _context.stop();
-        }
-      }
-    }, _callee, this);
-  }));
-  return _wait.apply(this, arguments);
-}
 
 var SerialPort = require('serialport');
 
@@ -225,150 +222,77 @@ function () {
 
     _defineProperty(this, "informationService", void 0);
 
+    _defineProperty(this, "name", void 0);
+
     _defineProperty(this, "manufacturer", void 0);
 
     _defineProperty(this, "model", void 0);
 
     _defineProperty(this, "serial", void 0);
 
-    _defineProperty(this, "getCurrentPosition",
-    /*#__PURE__*/
-    function () {
-      var _ref = _asyncToGenerator(
-      /*#__PURE__*/
-      regeneratorRuntime.mark(function _callee(state) {
-        return regeneratorRuntime.wrap(function _callee$(_context) {
-          while (1) {
-            switch (_context.prev = _context.next) {
-              case 0:
-                return _context.abrupt("return", state.CurrentPosition);
-
-              case 1:
-              case "end":
-                return _context.stop();
-            }
-          }
-        }, _callee, this);
-      }));
-
-      return function (_x) {
-        return _ref.apply(this, arguments);
+    _defineProperty(this, "getCurrentPosition", function (state) {
+      return function (cb) {
+        return cb(state.CurrentPosition);
       };
-    }());
+    });
 
-    _defineProperty(this, "getTargetPosition",
-    /*#__PURE__*/
-    function () {
-      var _ref2 = _asyncToGenerator(
-      /*#__PURE__*/
-      regeneratorRuntime.mark(function _callee2(state) {
-        return regeneratorRuntime.wrap(function _callee2$(_context2) {
-          while (1) {
-            switch (_context2.prev = _context2.next) {
-              case 0:
-                return _context2.abrupt("return", state.TargetPosition);
-
-              case 1:
-              case "end":
-                return _context2.stop();
-            }
-          }
-        }, _callee2, this);
-      }));
-
-      return function (_x2) {
-        return _ref2.apply(this, arguments);
+    _defineProperty(this, "getTargetPosition", function (state) {
+      return function (cb) {
+        return cb(state.TargetPosition);
       };
-    }());
+    });
 
-    _defineProperty(this, "setTargetPosition",
-    /*#__PURE__*/
-    function () {
-      var _ref3 = _asyncToGenerator(
+    _defineProperty(this, "setTargetPosition", function (state) {
+      return callbackify(
       /*#__PURE__*/
-      regeneratorRuntime.mark(function _callee3(state, newPosition) {
-        return regeneratorRuntime.wrap(function _callee3$(_context3) {
-          while (1) {
-            switch (_context3.prev = _context3.next) {
-              case 0:
-                _this.log("Set new position to", newPosition);
+      function () {
+        var _ref = _asyncToGenerator(
+        /*#__PURE__*/
+        regeneratorRuntime.mark(function _callee(newPosition) {
+          return regeneratorRuntime.wrap(function _callee$(_context) {
+            while (1) {
+              switch (_context.prev = _context.next) {
+                case 0:
+                  _this.log("Set new position to", newPosition);
 
-                state.TargetPosition = newPosition; // TODO
-                // We succeeded, so update the "current" state as well.
-                // We need to update the current state "later" because Siri can't
-                // handle receiving the change event inside the same "set target state"
-                // response.
+                  state.TargetPosition = newPosition; // TODO
 
-                _context3.next = 4;
-                return wait(1);
+                  _this.sendXML(state.channel, state.toCommeoState()); // We succeeded, so update the "current" state as well.
+                  // We need to update the current state "later" because Siri can't
+                  // handle receiving the change event inside the same "set target state"
+                  // response.
+                  //await wait(1);
+                  //state.service.setCharacteristic(Characteristic.TargetPosition, newPosition);
 
-              case 4:
-                state.service.setCharacteristic(Characteristic.TargetPosition, newPosition);
 
-              case 5:
-              case "end":
-                return _context3.stop();
+                case 3:
+                case "end":
+                  return _context.stop();
+              }
             }
-          }
-        }, _callee3, this);
-      }));
+          }, _callee, this);
+        }));
 
-      return function (_x3, _x4) {
-        return _ref3.apply(this, arguments);
+        return function (_x) {
+          return _ref.apply(this, arguments);
+        };
+      }());
+    });
+
+    _defineProperty(this, "getPositionState", function (state) {
+      return function (cb) {
+        return cb(state.PositionState);
       };
-    }());
+    });
 
-    _defineProperty(this, "getPositionState",
-    /*#__PURE__*/
-    function () {
-      var _ref4 = _asyncToGenerator(
-      /*#__PURE__*/
-      regeneratorRuntime.mark(function _callee4(state) {
-        return regeneratorRuntime.wrap(function _callee4$(_context4) {
-          while (1) {
-            switch (_context4.prev = _context4.next) {
-              case 0:
-                return _context4.abrupt("return", state.ObstructionDetected);
-
-              case 1:
-              case "end":
-                return _context4.stop();
-            }
-          }
-        }, _callee4, this);
-      }));
-
-      return function (_x5) {
-        return _ref4.apply(this, arguments);
+    _defineProperty(this, "getObstructionDetected", function (state) {
+      return function (cb) {
+        return cb(state.ObstructionDetected);
       };
-    }());
-
-    _defineProperty(this, "getObstructionDetected",
-    /*#__PURE__*/
-    function () {
-      var _ref5 = _asyncToGenerator(
-      /*#__PURE__*/
-      regeneratorRuntime.mark(function _callee5(state) {
-        return regeneratorRuntime.wrap(function _callee5$(_context5) {
-          while (1) {
-            switch (_context5.prev = _context5.next) {
-              case 0:
-                return _context5.abrupt("return", state.ObstructionDetected);
-
-              case 1:
-              case "end":
-                return _context5.stop();
-            }
-          }
-        }, _callee5, this);
-      }));
-
-      return function (_x6) {
-        return _ref5.apply(this, arguments);
-      };
-    }());
+    });
 
     this.log = log;
+    this.name = config["name"];
     this.manufacturer = config["manufacturer"] || "no manufacturer";
     this.model = config["model"] || "Model not available";
     this.serial = config["serial"] || "Non-defined serial"; // setup serial port
@@ -384,7 +308,8 @@ function () {
     }
 
     var parser = new SerialPort.parsers.Delimiter({
-      delimiter: '</xml>'
+      delimiter: '\r\n' //'</xml>'
+
     });
     this.activePort = new SerialPort(this.port, {
       baudRate: this.baud
@@ -400,12 +325,14 @@ function () {
     for (var channel = 1; channel < 65; channel++) {
       var name = config[`channel${channel}`];
       if (name === undefined) continue;
-      var shutterService = new Service.WindowCovering(name, "shutter");
-      var state = new CommeoState(shutterService);
-      shutterService.getCharacteristic(Characteristic.CurrentPosition).on("get", callbackify(this.getCurrentPosition)(state));
-      shutterService.getCharacteristic(Characteristic.TargetPosition).on("get", callbackify(this.getTargetPosition)(state)).on("set", callbackify(this.setTargetPosition)(state));
-      shutterService.getCharacteristic(Characteristic.PositionState).on("get", callbackify(this.getPositionState)(state));
-      shutterService.getCharacteristic(Characteristic.ObstructionDetected).on("get", callbackify(this.getObstructionDetected)(state));
+      log(name);
+      log(channel);
+      var shutterService = new Service.WindowCovering(`${name} ${this.name}`, `shutter${channel}`);
+      var state = new CommeoState(channel, shutterService);
+      shutterService.getCharacteristic(Characteristic.CurrentPosition).on("get", this.getCurrentPosition(state));
+      shutterService.getCharacteristic(Characteristic.TargetPosition).on("get", this.getTargetPosition(state)).on("set", this.setTargetPosition(state));
+      shutterService.getCharacteristic(Characteristic.PositionState).on("get", this.getPositionState(state));
+      shutterService.getCharacteristic(Characteristic.ObstructionDetected).on("get", this.getObstructionDetected(state));
       this.states.push(state);
     } // setup info service
 
@@ -415,17 +342,31 @@ function () {
   }
 
   _createClass(SelveAccessory, [{
-    key: "parseXML",
-    value: function parseXML(data) {
-      var xml = XmlDocument(data);
-      console.log(xml);
-    }
-  }, {
     key: "getServices",
     value: function getServices() {
       return [this.informationService].concat(_toConsumableArray(this.states.map(function (srv) {
         return srv.service;
       })));
+    }
+  }, {
+    key: "parseXML",
+    value: function parseXML(data) {
+      //console.log(data.toString());
+      var util = require('util');
+
+      console.log(util.inspect(data.toString(), {
+        showHidden: true,
+        depth: null
+      }));
+      return;
+      var xml = XmlDocument(data.toString());
+      console.log(xml);
+    }
+  }, {
+    key: "sendXML",
+    value: function sendXML(channel, dir) {
+      var result = this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${channel}</int><int>${dir}</int><int>1</int><int>0</int></array></methodCall>`);
+      console.log(result);
     }
   }]);
 

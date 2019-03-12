@@ -1,6 +1,5 @@
 import callbackify from './util/callbackify';
-import { CommeoState } from './util/commeo-state';
-import { wait } from './util/wait';
+import { CommeoPositionState, CommeoState } from './util/commeo-state';
 
 const SerialPort = require('serialport');
 const XmlDocument = require('xmldoc').XmlDocument;
@@ -23,12 +22,14 @@ class SelveAccessory {
   baud: number = 115200;
   activePort: typeof SerialPort;
   informationService;
+  name: string;
   manufacturer: string;
   model: string;
   serial: string;
 
   constructor(log, config) {
     this.log = log;
+    this.name = config["name"];
     this.manufacturer = config["manufacturer"] || "no manufacturer";
     this.model = config["model"] || "Model not available";
     this.serial = config["serial"] || "Non-defined serial";
@@ -43,7 +44,7 @@ class SelveAccessory {
     }
 
     const parser = new SerialPort.parsers.Delimiter({
-      delimiter: '</xml>'
+      delimiter: '\r\n' //'</xml>'
     });
     this.activePort = new SerialPort(this.port, {
       baudRate: this.baud
@@ -57,26 +58,27 @@ class SelveAccessory {
     for(let channel = 1; channel<65; channel++) {
       const name = config[`channel${channel}`];
       if (name === undefined) continue;
-
-      const shutterService = new Service.WindowCovering(name, "shutter");
-      const state = new CommeoState(shutterService);
+      log(name);
+      log(channel);
+      const shutterService = new Service.WindowCovering(`${name} ${this.name}`, `shutter${channel}`);
+      const state = new CommeoState(channel, shutterService);
 
       shutterService
       .getCharacteristic(Characteristic.CurrentPosition)
-      .on("get", callbackify(this.getCurrentPosition)(state));
+      .on("get", this.getCurrentPosition(state));
 
       shutterService
       .getCharacteristic(Characteristic.TargetPosition)
-      .on("get", callbackify(this.getTargetPosition)(state))
-      .on("set", callbackify(this.setTargetPosition)(state));
+      .on("get", this.getTargetPosition(state))
+      .on("set", this.setTargetPosition(state));
 
       shutterService
       .getCharacteristic(Characteristic.PositionState)
-      .on("get", callbackify(this.getPositionState)(state));
+      .on("get", this.getPositionState(state));
 
       shutterService
       .getCharacteristic(Characteristic.ObstructionDetected)
-      .on("get", callbackify(this.getObstructionDetected)(state));
+      .on("get", this.getObstructionDetected(state));
 
       this.states.push(state);
     }
@@ -89,44 +91,59 @@ class SelveAccessory {
       .setCharacteristic(Characteristic.SerialNumber, this.serial);
   }
 
-  parseXML(data: String) {
-    const xml = XmlDocument(data);
+  getServices() {
+    return [this.informationService, ...this.states.map(srv => srv.service)]; 
+  }
+
+  getCurrentPosition = (state: CommeoState) => {
+    return (cb) => cb(state.CurrentPosition);
+  }
+
+  getTargetPosition = (state: CommeoState) => {
+    return (cb) => cb(state.TargetPosition);
+  }
+
+  setTargetPosition = (state: CommeoState) => {
+    return callbackify(async (newPosition: number) => {
+      this.log("Set new position to", newPosition);
+
+      state.TargetPosition = newPosition;
+
+      // TODO
+      this.sendXML(state.channel, state.toCommeoState());
+
+
+      // We succeeded, so update the "current" state as well.
+      // We need to update the current state "later" because Siri can't
+      // handle receiving the change event inside the same "set target state"
+      // response.
+      //await wait(1);
+
+      //state.service.setCharacteristic(Characteristic.TargetPosition, newPosition);
+    });
+  };
+
+  getPositionState = (state: CommeoState) => {
+    return (cb) => cb(state.PositionState);
+  }
+
+  getObstructionDetected = (state: CommeoState) => {
+    return (cb) => cb(state.ObstructionDetected);
+  }
+
+  private parseXML(data: Buffer) {
+    
+    //console.log(data.toString());
+    const util = require('util')
+    console.log(util.inspect(data.toString(), {showHidden: true, depth: null}))
+    return;
+    const xml = XmlDocument(data.toString());
     console.log(xml);
   }
 
-  getServices() {
-    return [this.informationService, ...this.states.map(srv => srv.service)];
-  }
+  private sendXML(channel: number, dir: CommeoPositionState) {
 
-  getCurrentPosition = async (state: CommeoState) => {
-    return state.CurrentPosition;
-  }
-
-  getTargetPosition = async (state: CommeoState) => {
-    return state.TargetPosition;
-  }
-
-  setTargetPosition = async (state: CommeoState, newPosition: number) => {
-    this.log("Set new position to", newPosition);
-
-    state.TargetPosition = newPosition;
-
-    // TODO
-
-    // We succeeded, so update the "current" state as well.
-    // We need to update the current state "later" because Siri can't
-    // handle receiving the change event inside the same "set target state"
-    // response.
-    await wait(1);
-
-    state.service.setCharacteristic(Characteristic.TargetPosition, newPosition);
-  };
-
-  getPositionState = async (state: CommeoState) => {
-    return state.ObstructionDetected;
-  }
-
-  getObstructionDetected = async (state: CommeoState) => {
-    return state.ObstructionDetected;
+    const result = this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${channel}</int><int>${dir}</int><int>1</int><int>0</int></array></methodCall>`);
+    console.log(result);
   }
 }
