@@ -39,6 +39,7 @@ class SelveAccessory {
       this.usbService = USBRfService.getInstance(port, config["baud"], log);
     } catch (error) {
       log.error(error.message);
+      throw new Error('Can\'t open port');
     }
     
     // device config
@@ -75,6 +76,27 @@ class SelveAccessory {
       .setCharacteristic(Characteristic.Manufacturer, this.manufacturer)
       .setCharacteristic(Characteristic.Model, this.model)
       .setCharacteristic(Characteristic.SerialNumber, this.serial);
+
+    // update current position
+    this.usbService.requestUpdate(this.device, () => {});
+
+    this.usbService.eventEmitter.on(this.device, (state: Partial<CommeoState>) => {
+      if (state.CurrentPosition !== undefined) {
+        this.shutterService.getCharacteristic(Characteristic.CurrentPosition).setValue(state.CurrentPosition);
+      }
+      if (state.PositionState !== undefined) {
+        this.shutterService.getCharacteristic(Characteristic.PositionState).setValue(state.PositionState);
+      }
+      if (state.ObstructionDetected !== undefined) {
+        this.shutterService.getCharacteristic(Characteristic.ObstructionDetected).setValue(state.ObstructionDetected);
+      }
+      
+      this.state = {
+        ...this.state,
+        ...state
+      }
+    });
+
   }
 
   getServices = () => [this.informationService, this.shutterService];
