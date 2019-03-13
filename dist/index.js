@@ -73,104 +73,29 @@ function _defineProperty(obj, key, value) {
   return obj;
 }
 
-function _toConsumableArray(arr) {
-  return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread();
-}
+var CommeoState = // percentage 0 - 100, READ, NOTIFY
+// percentage 0 - 100, READ, WRITE, NOTIFY
+// READ, NOTIFY
+// READ, NOTIFY
+function CommeoState(device) {
+  _classCallCheck(this, CommeoState);
 
-function _arrayWithoutHoles(arr) {
-  if (Array.isArray(arr)) {
-    for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) arr2[i] = arr[i];
+  _defineProperty(this, "CurrentPosition", void 0);
 
-    return arr2;
-  }
-}
+  _defineProperty(this, "TargetPosition", void 0);
 
-function _iterableToArray(iter) {
-  if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter);
-}
+  _defineProperty(this, "PositionState", void 0);
 
-function _nonIterableSpread() {
-  throw new TypeError("Invalid attempt to spread non-iterable instance");
-}
+  _defineProperty(this, "ObstructionDetected", void 0);
 
-function callbackify(func) {
-  return function () {
-    var onlyArgs = [];
-    var maybeCallback = null;
+  _defineProperty(this, "device", void 0);
 
-    for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
-      args[_key] = arguments[_key];
-    }
-
-    for (var _i = 0; _i < args.length; _i++) {
-      var arg = args[_i];
-
-      if (typeof arg === 'function') {
-        maybeCallback = arg;
-        break;
-      }
-
-      onlyArgs.push(arg);
-    }
-
-    if (!maybeCallback) {
-      throw new Error("Missing callback parameter!");
-    }
-
-    var callback = maybeCallback;
-    func.apply(void 0, onlyArgs).then(function (data) {
-      return callback(null, data);
-    }).catch(function (err) {
-      return callback(err);
-    });
-  };
-}
-
-var CommeoState =
-/*#__PURE__*/
-function () {
-  // percentage 0 - 100, READ, NOTIFY
-  // percentage 0 - 100, READ, WRITE, NOTIFY
-  // READ, NOTIFY
-  // READ, NOTIFY
-  function CommeoState(channel, service) {
-    _classCallCheck(this, CommeoState);
-
-    _defineProperty(this, "CurrentPosition", void 0);
-
-    _defineProperty(this, "TargetPosition", void 0);
-
-    _defineProperty(this, "PositionState", void 0);
-
-    _defineProperty(this, "ObstructionDetected", void 0);
-
-    _defineProperty(this, "service", void 0);
-
-    _defineProperty(this, "channel", void 0);
-
-    this.CurrentPosition = 0;
-    this.TargetPosition = 0;
-    this.PositionState = HomebridgePositionState.STOPPED;
-    this.ObstructionDetected = false;
-    this.service = service;
-    this.channel = channel;
-  }
-
-  _createClass(CommeoState, [{
-    key: "toCommeoState",
-    value: function toCommeoState() {
-      if (this.CurrentPosition < this.TargetPosition) {
-        return CommeoPositionState.INCREASING;
-      } else if (this.CurrentPosition > this.TargetPosition) {
-        return CommeoPositionState.DECREASING;
-      } else {
-        return CommeoPositionState.STOPPED;
-      }
-    }
-  }]);
-
-  return CommeoState;
-}();
+  this.CurrentPosition = 0;
+  this.TargetPosition = 0;
+  this.PositionState = HomebridgePositionState.STOPPED;
+  this.ObstructionDetected = false;
+  this.device = device;
+};
 var HomebridgePositionState;
 
 (function (HomebridgePositionState) {
@@ -179,176 +104,67 @@ var HomebridgePositionState;
   HomebridgePositionState[HomebridgePositionState["STOPPED"] = 2] = "STOPPED";
 })(HomebridgePositionState || (HomebridgePositionState = {}));
 
-var CommeoPositionState;
+require("@babel/polyfill");
 
-(function (CommeoPositionState) {
-  CommeoPositionState[CommeoPositionState["DECREASING"] = 2] = "DECREASING";
-  CommeoPositionState[CommeoPositionState["INCREASING"] = 1] = "INCREASING";
-  CommeoPositionState[CommeoPositionState["STOPPED"] = 0] = "STOPPED";
-})(CommeoPositionState || (CommeoPositionState = {}));
+var EventEmitter = require('events');
 
 var SerialPort = require('serialport');
 
 var XmlDocument = require('xmldoc').XmlDocument;
 
-require("@babel/polyfill");
-
-var util = require("util");
-
-var Service, Characteristic;
-function index (homebridge) {
-  Service = homebridge.hap.Service;
-  Characteristic = homebridge.hap.Characteristic;
-  homebridge.registerAccessory("homebridge-selve-commeo", "Selve", SelveAccessory);
-}
-
-var SelveAccessory =
+var USBRfService =
 /*#__PURE__*/
 function () {
-  function SelveAccessory(log, config) {
+  _createClass(USBRfService, null, [{
+    key: "getInstance",
+
+    /* Make sure we have singletons (each port opens only once) */
+    value: function getInstance(port, baud, log) {
+      if (this.instances.get(port) !== undefined) {
+        return this.instances.get(port);
+      } else {
+        var instance = new USBRfService(port, baud, log);
+        this.instances.set(port, instance);
+        return instance;
+      }
+    }
+  }]);
+
+  function USBRfService(port) {
     var _this = this;
 
-    _classCallCheck(this, SelveAccessory);
+    var baud = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 115200;
+    var log = arguments.length > 2 ? arguments[2] : undefined;
 
-    _defineProperty(this, "log", void 0);
-
-    _defineProperty(this, "states", void 0);
+    _classCallCheck(this, USBRfService);
 
     _defineProperty(this, "port", void 0);
 
-    _defineProperty(this, "baud", 115200);
+    _defineProperty(this, "baud", void 0);
 
     _defineProperty(this, "activePort", void 0);
 
-    _defineProperty(this, "informationService", void 0);
+    _defineProperty(this, "log", void 0);
 
-    _defineProperty(this, "name", void 0);
+    _defineProperty(this, "eventEmitter", new EventEmitter());
 
-    _defineProperty(this, "manufacturer", void 0);
-
-    _defineProperty(this, "model", void 0);
-
-    _defineProperty(this, "serial", void 0);
-
-    _defineProperty(this, "getCurrentPosition", function (state) {
-      return function (cb) {
-        return cb(state.CurrentPosition);
-      };
-    });
-
-    _defineProperty(this, "getTargetPosition", function (state) {
-      return function (cb) {
-        return cb(state.TargetPosition);
-      };
-    });
-
-    _defineProperty(this, "setTargetPosition", function (state) {
-      return callbackify(
-      /*#__PURE__*/
-      function () {
-        var _ref = _asyncToGenerator(
-        /*#__PURE__*/
-        regeneratorRuntime.mark(function _callee(newPosition) {
-          return regeneratorRuntime.wrap(function _callee$(_context) {
-            while (1) {
-              switch (_context.prev = _context.next) {
-                case 0:
-                  _this.log("Set new position to", newPosition);
-
-                  state.TargetPosition = newPosition; // TODO
-
-                  _this.sendXML(state.channel, state.toCommeoState()); // We succeeded, so update the "current" state as well.
-                  // We need to update the current state "later" because Siri can't
-                  // handle receiving the change event inside the same "set target state"
-                  // response.
-                  //await wait(1);
-                  //state.service.setCharacteristic(Characteristic.TargetPosition, newPosition);
-
-
-                case 3:
-                case "end":
-                  return _context.stop();
-              }
-            }
-          }, _callee, this);
-        }));
-
-        return function (_x) {
-          return _ref.apply(this, arguments);
-        };
-      }());
-    });
-
-    _defineProperty(this, "getPositionState", function (state) {
-      return function (cb) {
-        return cb(state.PositionState);
-      };
-    });
-
-    _defineProperty(this, "getObstructionDetected", function (state) {
-      return function (cb) {
-        return cb(state.ObstructionDetected);
-      };
-    });
-
+    this.port = port;
+    this.baud = baud;
     this.log = log;
-    this.name = config["name"];
-    this.manufacturer = config["manufacturer"] || "no manufacturer";
-    this.model = config["model"] || "Model not available";
-    this.serial = config["serial"] || "Non-defined serial"; // setup serial port
-
-    this.port = config["device"];
-
-    if (this.port === undefined) {
-      throw new Error('Option "device" needs to be set');
-    }
-
-    if (config["baud"]) {
-      this.baud = config["baud"];
-    }
-
     var parser = new SerialPort.parsers.Delimiter({
       delimiter: '\r\n' //'</xml>'
 
     });
     this.activePort = new SerialPort(this.port, {
       baudRate: this.baud
+    }, function (err) {
+      _this.log(err ? err.message : `Port ${_this.port} opened.`);
     });
     this.activePort.pipe(parser);
-    this.activePort.on('open', function () {
-      return _this.log('USB-RF port open');
-    });
-    parser.on('data', this.parseXML.bind(this)); // setup services
-
-    this.states = new Array();
-
-    for (var channel = 1; channel < 65; channel++) {
-      var name = config[`channel${channel}`];
-      if (name === undefined) continue;
-      log(name);
-      log(channel);
-      var shutterService = new Service.WindowCovering(`${name} ${this.name}`, `shutter${channel}`);
-      var state = new CommeoState(channel, shutterService);
-      shutterService.getCharacteristic(Characteristic.CurrentPosition).on("get", this.getCurrentPosition(state));
-      shutterService.getCharacteristic(Characteristic.TargetPosition).on("get", this.getTargetPosition(state)).on("set", this.setTargetPosition(state));
-      shutterService.getCharacteristic(Characteristic.PositionState).on("get", this.getPositionState(state));
-      shutterService.getCharacteristic(Characteristic.ObstructionDetected).on("get", this.getObstructionDetected(state));
-      this.states.push(state);
-    } // setup info service
-
-
-    this.informationService = new Service.AccessoryInformation();
-    this.informationService.setCharacteristic(Characteristic.Manufacturer, this.manufacturer).setCharacteristic(Characteristic.Model, this.model).setCharacteristic(Characteristic.SerialNumber, this.serial);
+    parser.on('data', this.parseXML.bind(this));
   }
 
-  _createClass(SelveAccessory, [{
-    key: "getServices",
-    value: function getServices() {
-      return [this.informationService].concat(_toConsumableArray(this.states.map(function (srv) {
-        return srv.service;
-      })));
-    }
-  }, {
+  _createClass(USBRfService, [{
     key: "parseXML",
     value: function parseXML(data) {
       //console.log(data.toString());
@@ -360,17 +176,147 @@ function () {
       }));
       return;
       var xml = XmlDocument(data.toString());
-      console.log(xml);
+      console.log(xml); // update 
+
+      /*shutterService
+          .getCharacteristic(Characteristic.ObstructionDetected)
+           CurrentPosition: number; // percentage 0 - 100, READ, NOTIFY
+          TargetPosition: number; // percentage 0 - 100, READ, WRITE, NOTIFY
+          PositionState: HomebridgePositionState; // READ, NOTIFY
+          ObstructionDetected: boolean; // READ, NOTIFY
+           */
+      // this.eventEmitter.emit(new CommeoState())
     }
   }, {
-    key: "sendXML",
-    value: function sendXML(channel, dir) {
-      var result = this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${channel}</int><int>${dir}</int><int>1</int><int>0</int></array></methodCall>`);
-      console.log(result);
-    }
+    key: "sendPosition",
+    value: function () {
+      var _sendPosition = _asyncToGenerator(
+      /*#__PURE__*/
+      regeneratorRuntime.mark(function _callee(device, targetPos, cb) {
+        var commeoTargetPos;
+        return regeneratorRuntime.wrap(function _callee$(_context) {
+          while (1) {
+            switch (_context.prev = _context.next) {
+              case 0:
+                commeoTargetPos = targetPos > 0 ? Math.round(targetPos * 65535 / 100) : 0;
+                this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>${commeoTargetPos}</int><int>0</int></array></methodCall>`, cb);
+
+              case 2:
+              case "end":
+                return _context.stop();
+            }
+          }
+        }, _callee, this);
+      }));
+
+      return function sendPosition(_x, _x2, _x3) {
+        return _sendPosition.apply(this, arguments);
+      };
+    }()
   }]);
 
-  return SelveAccessory;
+  return USBRfService;
 }();
+
+_defineProperty(USBRfService, "instances", new Map());
+
+require("@babel/polyfill");
+
+var Service, Characteristic;
+function index (homebridge) {
+  Service = homebridge.hap.Service;
+  Characteristic = homebridge.hap.Characteristic;
+  homebridge.registerAccessory("homebridge-selve-commeo", "Selve", SelveAccessory);
+}
+
+var SelveAccessory = function SelveAccessory(log, config) {
+  var _this = this;
+
+  _classCallCheck(this, SelveAccessory);
+
+  _defineProperty(this, "log", void 0);
+
+  _defineProperty(this, "usbService", void 0);
+
+  _defineProperty(this, "state", void 0);
+
+  _defineProperty(this, "device", void 0);
+
+  _defineProperty(this, "name", void 0);
+
+  _defineProperty(this, "manufacturer", void 0);
+
+  _defineProperty(this, "model", void 0);
+
+  _defineProperty(this, "serial", void 0);
+
+  _defineProperty(this, "informationService", void 0);
+
+  _defineProperty(this, "shutterService", void 0);
+
+  _defineProperty(this, "getServices", function () {
+    return [_this.informationService, _this.shutterService];
+  });
+
+  _defineProperty(this, "getCurrentPosition", function (cb) {
+    return cb(_this.state.CurrentPosition);
+  });
+
+  _defineProperty(this, "getTargetPosition", function (cb) {
+    return cb(_this.state.TargetPosition);
+  });
+
+  _defineProperty(this, "setTargetPosition", function (newPosition, cb) {
+    _this.log("Set new position to", newPosition);
+
+    _this.state.TargetPosition = newPosition;
+
+    _this.usbService.sendPosition(_this.state.device, _this.state.TargetPosition, cb);
+  });
+
+  _defineProperty(this, "getPositionState", function (cb) {
+    return cb(_this.state.PositionState);
+  });
+
+  _defineProperty(this, "getObstructionDetected", function (cb) {
+    return cb(_this.state.ObstructionDetected);
+  });
+
+  this.log = log;
+  this.name = config["name"];
+  this.manufacturer = config["manufacturer"] || "no manufacturer";
+  this.model = config["model"] || "Model not available";
+  this.serial = config["serial"] || "Non-defined serial"; // serial port config
+
+  var port = config["port"];
+
+  if (port === undefined) {
+    throw new Error('Option "port" needs to be set');
+  }
+
+  try {
+    this.usbService = USBRfService.getInstance(port, config["baud"], log);
+  } catch (error) {
+    log.error(error.message);
+  } // device config
+
+
+  this.device = Number(config['device']);
+
+  if (this.device === undefined) {
+    throw new Error('Option "device" needs to be set');
+  } // setup services
+
+
+  this.shutterService = new Service.WindowCovering(this.name, `shutter`);
+  this.state = new CommeoState(this.device);
+  this.shutterService.getCharacteristic(Characteristic.CurrentPosition).on("get", this.getCurrentPosition.bind(this));
+  this.shutterService.getCharacteristic(Characteristic.TargetPosition).on("get", this.getTargetPosition.bind(this)).on("set", this.setTargetPosition.bind(this));
+  this.shutterService.getCharacteristic(Characteristic.PositionState).on("get", this.getPositionState.bind(this));
+  this.shutterService.getCharacteristic(Characteristic.ObstructionDetected).on("get", this.getObstructionDetected.bind(this)); // setup info service
+
+  this.informationService = new Service.AccessoryInformation();
+  this.informationService.setCharacteristic(Characteristic.Manufacturer, this.manufacturer).setCharacteristic(Characteristic.Model, this.model).setCharacteristic(Characteristic.SerialNumber, this.serial);
+};
 
 module.exports = index;
