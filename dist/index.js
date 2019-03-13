@@ -37,6 +37,25 @@ function _defineProperty(obj, key, value) {
   return obj;
 }
 
+function _objectSpread(target) {
+  for (var i = 1; i < arguments.length; i++) {
+    var source = arguments[i] != null ? arguments[i] : {};
+    var ownKeys = Object.keys(source);
+
+    if (typeof Object.getOwnPropertySymbols === 'function') {
+      ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) {
+        return Object.getOwnPropertyDescriptor(source, sym).enumerable;
+      }));
+    }
+
+    ownKeys.forEach(function (key) {
+      _defineProperty(target, key, source[key]);
+    });
+  }
+
+  return target;
+}
+
 var CommeoState = // percentage 0 - 100, READ, NOTIFY
 // percentage 0 - 100, READ, WRITE, NOTIFY
 // READ, NOTIFY
@@ -74,8 +93,9 @@ var EventEmitter = require('events');
 
 var SerialPort = require('serialport');
 
-var XmlDocument = require('xmldoc').XmlDocument;
+var parser = require('fast-xml-parser');
 
+var maxPosition = 65535;
 var USBRfService =
 /*#__PURE__*/
 function () {
@@ -112,12 +132,13 @@ function () {
 
     _defineProperty(this, "eventEmitter", new EventEmitter());
 
+    _defineProperty(this, "eventString", '');
+
     this.port = port;
     this.baud = baud;
     this.log = log;
     var parser = new SerialPort.parsers.Delimiter({
-      delimiter: '\r\n' //'</xml>'
-
+      delimiter: '\r\n'
     });
     this.activePort = new SerialPort(this.port, {
       baudRate: this.baud
@@ -125,37 +146,47 @@ function () {
       _this.log(err ? err.message : `Port ${_this.port} opened.`);
     });
     this.activePort.pipe(parser);
-    parser.on('data', this.parseXML.bind(this));
+    parser.on('data', this.handleData.bind(this));
   }
 
   _createClass(USBRfService, [{
+    key: "handleData",
+    value: function handleData(data) {
+      this.eventString += data.toString();
+
+      if (data.toString() === '</methodResponse>') {
+        this.eventString = '';
+      } else if (data.toString() === '</methodCall>') {
+        this.parseXML(this.eventString);
+        this.eventString = '';
+      }
+    }
+  }, {
     key: "parseXML",
-    value: function parseXML(data) {
-      //console.log(data.toString());
-      var util = require('util');
+    value: function parseXML(input) {
+      var data = parser.parse(input);
 
-      console.log(util.inspect(data.toString(), {
-        showHidden: true,
-        depth: null
-      }));
-      return;
-      var xml = XmlDocument(data.toString());
-      console.log(xml); // update 
+      if (!data.methodCall || data.methodCall.methodName !== 'selve.GW.event.device') {
+        return;
+      }
 
-      /*shutterService
-          .getCharacteristic(Characteristic.ObstructionDetected)
-           CurrentPosition: number; // percentage 0 - 100, READ, NOTIFY
-          TargetPosition: number; // percentage 0 - 100, READ, WRITE, NOTIFY
-          PositionState: HomebridgePositionState; // READ, NOTIFY
-          ObstructionDetected: boolean; // READ, NOTIFY
-           */
-      // this.eventEmitter.emit(new CommeoState())
+      var payload = data.methodCall.array.int;
+      var device = payload[0];
+      var PositionState = payload[1] === 1 ? HomebridgePositionState.STOPPED : payload[1] === 2 ? HomebridgePositionState.DECREASING : HomebridgePositionState.INCREASING;
+      var CurrentPosition = Math.min(100, Math.round(100 - payload[2] / maxPosition * 100));
+      var flags = String(payload[4]).split('');
+      var ObstructionDetected = flags[0] === '1' || flags[1] === '1' || flags[2] === '1';
+      this.eventEmitter.emit(device, {
+        CurrentPosition,
+        PositionState,
+        ObstructionDetected
+      });
     }
   }, {
     key: "sendPosition",
     value: function sendPosition(device, targetPos, cb) {
-      var commeoTargetPos = targetPos > 0 ? Math.round(targetPos * 65535 / 100) : 0;
-      this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>${commeoTargetPos}</int><int>0</int></array></methodCall>`, cb);
+      var commeoTargetPos = targetPos > 0 ? maxPosition - Math.min(Math.round(targetPos / 100 * maxPosition), maxPosition) : maxPosition;
+      this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
     }
   }, {
     key: "requestUpdate",
@@ -247,6 +278,7 @@ var SelveAccessory = function SelveAccessory(log, config) {
     this.usbService = USBRfService.getInstance(port, config["baud"], log);
   } catch (error) {
     log.error(error.message);
+    throw new Error('Can\'t open port');
   } // device config
 
 
@@ -265,7 +297,24 @@ var SelveAccessory = function SelveAccessory(log, config) {
   this.shutterService.getCharacteristic(Characteristic.ObstructionDetected).on("get", this.getObstructionDetected.bind(this)); // setup info service
 
   this.informationService = new Service.AccessoryInformation();
-  this.informationService.setCharacteristic(Characteristic.Manufacturer, this.manufacturer).setCharacteristic(Characteristic.Model, this.model).setCharacteristic(Characteristic.SerialNumber, this.serial);
+  this.informationService.setCharacteristic(Characteristic.Manufacturer, this.manufacturer).setCharacteristic(Characteristic.Model, this.model).setCharacteristic(Characteristic.SerialNumber, this.serial); // update current position
+
+  this.usbService.requestUpdate(this.device, function () {});
+  this.usbService.eventEmitter.on(this.device, function (state) {
+    if (state.CurrentPosition !== undefined) {
+      _this.shutterService.getCharacteristic(Characteristic.CurrentPosition).setValue(state.CurrentPosition);
+    }
+
+    if (state.PositionState !== undefined) {
+      _this.shutterService.getCharacteristic(Characteristic.PositionState).setValue(state.PositionState);
+    }
+
+    if (state.ObstructionDetected !== undefined) {
+      _this.shutterService.getCharacteristic(Characteristic.ObstructionDetected).setValue(state.ObstructionDetected);
+    }
+
+    _this.state = _objectSpread({}, _this.state, state);
+  });
 };
 
 module.exports = index;
