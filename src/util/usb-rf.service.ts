@@ -63,8 +63,12 @@ export class USBRfService {
         // this.eventEmitter.emit(new CommeoState())
     }
 
-    public async sendPosition(device: number, targetPos: number, cb: Function) {
+    public sendPosition(device: number, targetPos: number, cb: Function) {
         const commeoTargetPos = targetPos > 0 ? Math.round(targetPos * 65535 / 100) : 0;
         this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>${commeoTargetPos}</int><int>0</int></array></methodCall>`, cb);
+    }
+
+    public requestUpdate(device: number, cb: Function) {
+        this.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
     }
 }
