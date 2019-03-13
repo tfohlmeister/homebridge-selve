@@ -1,41 +1,5 @@
 'use strict';
 
-function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) {
-  try {
-    var info = gen[key](arg);
-    var value = info.value;
-  } catch (error) {
-    reject(error);
-    return;
-  }
-
-  if (info.done) {
-    resolve(value);
-  } else {
-    Promise.resolve(value).then(_next, _throw);
-  }
-}
-
-function _asyncToGenerator(fn) {
-  return function () {
-    var self = this,
-        args = arguments;
-    return new Promise(function (resolve, reject) {
-      var gen = fn.apply(self, args);
-
-      function _next(value) {
-        asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value);
-      }
-
-      function _throw(err) {
-        asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err);
-      }
-
-      _next(undefined);
-    });
-  };
-}
-
 function _classCallCheck(instance, Constructor) {
   if (!(instance instanceof Constructor)) {
     throw new TypeError("Cannot call a class as a function");
@@ -189,30 +153,15 @@ function () {
     }
   }, {
     key: "sendPosition",
-    value: function () {
-      var _sendPosition = _asyncToGenerator(
-      /*#__PURE__*/
-      regeneratorRuntime.mark(function _callee(device, targetPos, cb) {
-        var commeoTargetPos;
-        return regeneratorRuntime.wrap(function _callee$(_context) {
-          while (1) {
-            switch (_context.prev = _context.next) {
-              case 0:
-                commeoTargetPos = targetPos > 0 ? Math.round(targetPos * 65535 / 100) : 0;
-                this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>${commeoTargetPos}</int><int>0</int></array></methodCall>`, cb);
-
-              case 2:
-              case "end":
-                return _context.stop();
-            }
-          }
-        }, _callee, this);
-      }));
-
-      return function sendPosition(_x, _x2, _x3) {
-        return _sendPosition.apply(this, arguments);
-      };
-    }()
+    value: function sendPosition(device, targetPos, cb) {
+      var commeoTargetPos = targetPos > 0 ? Math.round(targetPos * 65535 / 100) : 0;
+      this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>${commeoTargetPos}</int><int>0</int></array></methodCall>`, cb);
+    }
+  }, {
+    key: "requestUpdate",
+    value: function requestUpdate(device, cb) {
+      this.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
+    }
   }]);
 
   return USBRfService;
