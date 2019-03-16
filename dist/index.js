@@ -182,7 +182,7 @@ function () {
 
       var cb = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : function () {};
 
-      if (this.activePort !== undefined && this.activePort.isOpen()) {
+      if (this.activePort !== undefined && this.activePort.isOpen) {
         cb(true);
         return;
       }

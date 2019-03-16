@@ -1,6 +1,6 @@
 {
   "name": "homebridge-selve",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Selve Remote Shutter Support for Homebridge: https://github.com/nfarina/homebridge",
   "license": "MIT",
   "keywords": [
