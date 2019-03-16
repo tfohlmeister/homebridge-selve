@@ -115,8 +115,6 @@ function () {
   }]);
 
   function USBRfService(port) {
-    var _this = this;
-
     var baud = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 115200;
     var log = arguments.length > 2 ? arguments[2] : undefined;
 
@@ -140,13 +138,8 @@ function () {
     var parser = new SerialPort.parsers.Delimiter({
       delimiter: '\r\n'
     });
-    this.activePort = new SerialPort(this.port, {
-      baudRate: this.baud
-    }, function (err) {
-      _this.log(err ? err.message : `Port ${_this.port} opened.`);
-    });
-    this.activePort.pipe(parser);
     parser.on('data', this.handleData.bind(this));
+    this.openPort();
   }
 
   _createClass(USBRfService, [{
@@ -183,15 +176,53 @@ function () {
       });
     }
   }, {
+    key: "openPort",
+    value: function openPort() {
+      var _this = this;
+
+      var cb = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : function () {};
+
+      if (this.activePort !== undefined && this.activePort.isOpen()) {
+        cb(true);
+        return;
+      }
+
+      this.activePort = new SerialPort(this.port, {
+        baudRate: this.baud
+      }, function (err) {
+        if (err) {
+          _this.log(err.message);
+
+          _this.activePort = undefined;
+        } else {
+          _this.log(`Port ${_this.port} opened.`);
+
+          _this.activePort.pipe(parser);
+        }
+
+        cb(!!!err);
+      });
+    }
+  }, {
     key: "sendPosition",
-    value: function sendPosition(device, targetPos, cb) {
+    value: function sendPosition(device, targetPos) {
+      var _this2 = this;
+
+      var cb = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : function () {};
       var commeoTargetPos = targetPos > 0 ? maxPosition - Math.min(Math.round(targetPos / 100 * maxPosition), maxPosition) : maxPosition;
-      this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
+      this.openPort(function () {
+        _this2.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
+      });
     }
   }, {
     key: "requestUpdate",
-    value: function requestUpdate(device, cb) {
-      this.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
+    value: function requestUpdate(device) {
+      var _this3 = this;
+
+      var cb = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : function () {};
+      this.openPort(function () {
+        _this3.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
+      });
     }
   }]);
 
@@ -247,7 +278,7 @@ var SelveAccessory = function SelveAccessory(log, config) {
   });
 
   _defineProperty(this, "setTargetPosition", function (newPosition, cb) {
-    _this.log("Set new position to", newPosition);
+    _this.log("Set new target position to", newPosition);
 
     _this.state.TargetPosition = newPosition;
 
@@ -297,24 +328,28 @@ var SelveAccessory = function SelveAccessory(log, config) {
   this.shutterService.getCharacteristic(Characteristic.ObstructionDetected).on("get", this.getObstructionDetected.bind(this)); // setup info service
 
   this.informationService = new Service.AccessoryInformation();
-  this.informationService.setCharacteristic(Characteristic.Manufacturer, this.manufacturer).setCharacteristic(Characteristic.Model, this.model).setCharacteristic(Characteristic.SerialNumber, this.serial); // update current position
+  this.informationService.setCharacteristic(Characteristic.Manufacturer, this.manufacturer).setCharacteristic(Characteristic.Model, this.model).setCharacteristic(Characteristic.SerialNumber, this.serial); // handle status updates
 
-  this.usbService.requestUpdate(this.device, function () {});
-  this.usbService.eventEmitter.on(this.device, function (state) {
-    if (state.CurrentPosition !== undefined) {
-      _this.shutterService.getCharacteristic(Characteristic.CurrentPosition).setValue(state.CurrentPosition);
+  this.usbService.eventEmitter.on(this.device, function (newState) {
+    console.log("Status update!", newState);
+
+    if (newState.CurrentPosition !== undefined) {
+      _this.shutterService.getCharacteristic(Characteristic.CurrentPosition).setValue(newState.CurrentPosition);
     }
 
-    if (state.PositionState !== undefined) {
-      _this.shutterService.getCharacteristic(Characteristic.PositionState).setValue(state.PositionState);
+    if (newState.PositionState !== undefined) {
+      _this.shutterService.getCharacteristic(Characteristic.PositionState).setValue(newState.PositionState);
     }
 
-    if (state.ObstructionDetected !== undefined) {
-      _this.shutterService.getCharacteristic(Characteristic.ObstructionDetected).setValue(state.ObstructionDetected);
-    }
+    if (newState.ObstructionDetected !== undefined) {
+      _this.shutterService.getCharacteristic(Characteristic.ObstructionDetected).setValue(newState.ObstructionDetected);
+    } // upgrade current state with new data
 
-    _this.state = _objectSpread({}, _this.state, state);
-  });
+
+    _this.state = _objectSpread({}, _this.state, newState);
+  }); // get current position
+
+  this.usbService.requestUpdate(this.device);
 };
 
 module.exports = index;
