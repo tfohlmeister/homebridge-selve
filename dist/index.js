@@ -284,11 +284,11 @@ var SelveAccessory = function SelveAccessory(log, config) {
   });
 
   _defineProperty(this, "getCurrentPosition", function (cb) {
-    return cb(_this.state.CurrentPosition);
+    return cb(null, _this.state.CurrentPosition);
   });
 
   _defineProperty(this, "getTargetPosition", function (cb) {
-    return cb(_this.state.TargetPosition);
+    return cb(null, _this.state.TargetPosition);
   });
 
   _defineProperty(this, "setTargetPosition", function (newPosition, cb) {
@@ -300,11 +300,11 @@ var SelveAccessory = function SelveAccessory(log, config) {
   });
 
   _defineProperty(this, "getPositionState", function (cb) {
-    return cb(_this.state.PositionState);
+    return cb(null, _this.state.PositionState);
   });
 
   _defineProperty(this, "getObstructionDetected", function (cb) {
-    return cb(_this.state.ObstructionDetected);
+    return cb(null, _this.state.ObstructionDetected);
   });
 
   this.log = log;
