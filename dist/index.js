@@ -73,8 +73,10 @@ function CommeoState(device) {
 
   _defineProperty(this, "device", void 0);
 
-  this.CurrentPosition = 0;
-  this.TargetPosition = 0;
+  this.CurrentPosition = 100; // assume default open
+
+  this.TargetPosition = 100; // assume default open
+
   this.PositionState = HomebridgePositionState.STOPPED;
   this.ObstructionDetected = false;
   this.device = device;
@@ -160,6 +162,8 @@ function () {
       var data = parser.parse(input);
 
       if (!data.methodCall || data.methodCall.methodName !== 'selve.GW.event.device') {
+        this.log("Don't care about:");
+        this.log(data);
         return;
       }
 
@@ -169,7 +173,8 @@ function () {
       var CurrentPosition = Math.min(100, Math.round(100 - payload[2] / maxPosition * 100));
       var flags = String(payload[4]).split('');
       var ObstructionDetected = flags[0] === '1' || flags[1] === '1' || flags[2] === '1';
-      this.eventEmitter.emit(device, {
+      this.eventEmitter.emit(String(device), {
+        device,
         CurrentPosition,
         PositionState,
         ObstructionDetected
@@ -214,7 +219,7 @@ function () {
         if (isOpen) {
           _this2.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
         } else {
-          throw new Error("Port not open");
+          cb(new Error("Port not open"));
         }
       });
     }
@@ -228,7 +233,7 @@ function () {
         if (isOpen) {
           _this3.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
         } else {
-          throw new Error("Port not open");
+          cb(new Error("Port not open"));
         }
       });
     }
@@ -311,13 +316,6 @@ var SelveAccessory = function SelveAccessory(log, config) {
 
   if (port === undefined) {
     throw new Error('Option "port" needs to be set');
-  }
-
-  try {
-    this.usbService = USBRfService.getInstance(port, config["baud"], log);
-  } catch (error) {
-    log.error(error.message);
-    throw new Error('Can\'t open port');
   } // device config
 
 
@@ -325,8 +323,9 @@ var SelveAccessory = function SelveAccessory(log, config) {
 
   if (this.device === undefined) {
     throw new Error('Option "device" needs to be set');
-  } // setup services
+  }
 
+  this.usbService = USBRfService.getInstance(port, config["baud"], log); // setup services
 
   this.shutterService = new Service.WindowCovering(this.name, `shutter`);
   this.state = new CommeoState(this.device);
@@ -338,7 +337,7 @@ var SelveAccessory = function SelveAccessory(log, config) {
   this.informationService = new Service.AccessoryInformation();
   this.informationService.setCharacteristic(Characteristic.Manufacturer, this.manufacturer).setCharacteristic(Characteristic.Model, this.model).setCharacteristic(Characteristic.SerialNumber, this.serial); // handle status updates
 
-  this.usbService.eventEmitter.on(this.device, function (newState) {
+  this.usbService.eventEmitter.on(String(this.device), function (newState) {
     console.log("Status update!", newState);
 
     if (newState.CurrentPosition !== undefined) {

@@ -35,18 +35,14 @@ class SelveAccessory {
     if (port === undefined) {
       throw new Error('Option "port" needs to be set');
     }
-    try {
-      this.usbService = USBRfService.getInstance(port, config["baud"], log);
-    } catch (error) {
-      log.error(error.message);
-      throw new Error('Can\'t open port');
-    }
-    
+
     // device config
     this.device = Number(config['device']);
     if (this.device === undefined) {
       throw new Error('Option "device" needs to be set');
     }
+
+    this.usbService = USBRfService.getInstance(port, config["baud"], log);
 
     // setup services
     this.shutterService = new Service.WindowCovering(this.name, `shutter`);
@@ -78,7 +74,7 @@ class SelveAccessory {
       .setCharacteristic(Characteristic.SerialNumber, this.serial);
 
     // handle status updates
-    this.usbService.eventEmitter.on(this.device, (newState: Partial<CommeoState>) => {
+    this.usbService.eventEmitter.on(String(this.device), (newState: Partial<CommeoState>) => {
       console.log("Status update!", newState);
       if (newState.CurrentPosition !== undefined) {
         this.shutterService.getCharacteristic(Characteristic.CurrentPosition).setValue(newState.CurrentPosition);
