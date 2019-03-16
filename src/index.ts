@@ -99,13 +99,13 @@ class SelveAccessory {
 
   getServices = () => [this.informationService, this.shutterService];
 
-  getCurrentPosition = (cb) => cb(this.state.CurrentPosition);
-  getTargetPosition = (cb) => cb(this.state.TargetPosition);
+  getCurrentPosition = (cb) => cb(null, this.state.CurrentPosition);
+  getTargetPosition = (cb) => cb(null, this.state.TargetPosition);
   setTargetPosition = (newPosition: number, cb: Function) => {
     this.log("Set new target position to", newPosition);
     this.state.TargetPosition = newPosition;
     this.usbService.sendPosition(this.state.device, this.state.TargetPosition, cb);
   };
-  getPositionState = (cb) => cb(this.state.PositionState);
-  getObstructionDetected = (cb) => cb(this.state.ObstructionDetected);
+  getPositionState = (cb) => cb(null, this.state.PositionState);
+  getObstructionDetected = (cb) => cb(null, this.state.ObstructionDetected);
 }

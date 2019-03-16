@@ -17,7 +17,7 @@ Exposes up to 64 roller shutters using a Selve USB-RF module paired with Selve C
 
 ## Setup
 1. Pair roller shutters and USB-RF Gateway using the official Selve tools
-2. Once paired, update your `config.json` and add as many "Selve" accessories as needed (see example above). Make sure you set the `device` to the same ActorID used in the tools app, so that this plugin can handle actions and status updates correctly. 
+2. Once paired, update your `config.json` and add as many "Selve" accessories as needed (see example above). Make sure you set the `device` to the same ActorID (0-63) used in the tools app, so that this plugin can handle actions and status updates correctly. 
 
 ## Development
 
