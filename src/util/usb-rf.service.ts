@@ -1,4 +1,4 @@
-import { HomebridgePositionState } from './commeo-state';
+import { CommeoState, HomebridgePositionState } from './commeo-state';
 
 require("@babel/polyfill");
 
@@ -53,6 +53,8 @@ export class USBRfService {
     private parseXML(input: string) {
         const data = parser.parse(input);
         if (!data.methodCall || data.methodCall.methodName !== 'selve.GW.event.device') {
+            this.log("Don't care about:");
+            this.log(data);
             return;
         }
         const payload = data.methodCall.array.int;
@@ -65,11 +67,12 @@ export class USBRfService {
         const flags = String(payload[4]).split('');
         const ObstructionDetected = flags[0] === '1' || flags[1] === '1' || flags[2] === '1';
         
-        this.eventEmitter.emit(device, {
+        this.eventEmitter.emit(String(device), {
+            device,
             CurrentPosition,
             PositionState,
             ObstructionDetected
-        });
+        } as Partial<CommeoState>);
     }
 
     private openPort(cb: Function = () => {}) {
@@ -97,7 +100,7 @@ export class USBRfService {
             if (isOpen) {
                 this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
             } else {
-                throw new Error("Port not open");
+                cb(new Error("Port not open"));
             }
         });
     }
@@ -107,7 +110,7 @@ export class USBRfService {
             if (isOpen) {
                 this.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
             } else {
-                throw new Error("Port not open");
+                cb(new Error("Port not open"));
             }
         });
     }

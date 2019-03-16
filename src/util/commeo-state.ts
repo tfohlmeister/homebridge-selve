@@ -6,8 +6,8 @@ export class CommeoState {
     device: number;
 
     constructor(device: number) {
-        this.CurrentPosition = 0;
-        this.TargetPosition = 0;
+        this.CurrentPosition = 100; // assume default open
+        this.TargetPosition = 100; // assume default open
         this.PositionState = HomebridgePositionState.STOPPED;
         this.ObstructionDetected = false;
         this.device = device;
