@@ -73,7 +73,7 @@ export class USBRfService {
     }
 
     private openPort(cb: Function = () => {}) {
-        if (this.activePort !== undefined && this.activePort.isOpen()) {
+        if (this.activePort !== undefined && this.activePort.isOpen {
             cb(true);
             return
         }
