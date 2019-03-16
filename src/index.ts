@@ -77,26 +77,28 @@ class SelveAccessory {
       .setCharacteristic(Characteristic.Model, this.model)
       .setCharacteristic(Characteristic.SerialNumber, this.serial);
 
-    // update current position
-    this.usbService.requestUpdate(this.device, () => {});
-
-    this.usbService.eventEmitter.on(this.device, (state: Partial<CommeoState>) => {
-      if (state.CurrentPosition !== undefined) {
-        this.shutterService.getCharacteristic(Characteristic.CurrentPosition).setValue(state.CurrentPosition);
+    // handle status updates
+    this.usbService.eventEmitter.on(this.device, (newState: Partial<CommeoState>) => {
+      console.log("Status update!", newState);
+      if (newState.CurrentPosition !== undefined) {
+        this.shutterService.getCharacteristic(Characteristic.CurrentPosition).setValue(newState.CurrentPosition);
       }
-      if (state.PositionState !== undefined) {
-        this.shutterService.getCharacteristic(Characteristic.PositionState).setValue(state.PositionState);
+      if (newState.PositionState !== undefined) {
+        this.shutterService.getCharacteristic(Characteristic.PositionState).setValue(newState.PositionState);
       }
-      if (state.ObstructionDetected !== undefined) {
-        this.shutterService.getCharacteristic(Characteristic.ObstructionDetected).setValue(state.ObstructionDetected);
+      if (newState.ObstructionDetected !== undefined) {
+        this.shutterService.getCharacteristic(Characteristic.ObstructionDetected).setValue(newState.ObstructionDetected);
       }
       
+      // upgrade current state with new data
       this.state = {
         ...this.state,
-        ...state
+        ...newState
       }
     });
 
+    // get current position
+    this.usbService.requestUpdate(this.device);
   }
 
   getServices = () => [this.informationService, this.shutterService];
@@ -104,7 +106,7 @@ class SelveAccessory {
   getCurrentPosition = (cb) => cb(this.state.CurrentPosition);
   getTargetPosition = (cb) => cb(this.state.TargetPosition);
   setTargetPosition = (newPosition: number, cb: Function) => {
-    this.log("Set new position to", newPosition);
+    this.log("Set new target position to", newPosition);
     this.state.TargetPosition = newPosition;
     this.usbService.sendPosition(this.state.device, this.state.TargetPosition, cb);
   };

@@ -36,13 +36,8 @@ export class USBRfService {
         const parser = new SerialPort.parsers.Delimiter({
             delimiter: '\r\n'
         });
-        this.activePort = new SerialPort(this.port, {
-            baudRate: this.baud
-        }, (err) => {
-            this.log(err ? err.message : `Port ${this.port} opened.`);
-        });
-        this.activePort.pipe(parser);
         parser.on('data', this.handleData.bind(this));
+        this.openPort();
     }
 
     private handleData(data: Buffer) {
@@ -77,12 +72,35 @@ export class USBRfService {
         });
     }
 
-    public sendPosition(device: number, targetPos: number, cb: Function) {
-        const commeoTargetPos = targetPos > 0 ? maxPosition - Math.min(Math.round(targetPos / 100 * maxPosition), maxPosition) : maxPosition;
-        this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
+    private openPort(cb: Function = () => {}) {
+        if (this.activePort !== undefined && this.activePort.isOpen()) {
+            cb(true);
+            return
+        }
+        this.activePort = new SerialPort(this.port, {
+            baudRate: this.baud
+        }, (err) => {
+            if (err) {
+                this.log(err.message);
+                this.activePort = undefined;
+            } else {
+                this.log(`Port ${this.port} opened.`);
+                this.activePort.pipe(parser);
+            }
+            cb(!!!err);
+        });
     }
 
-    public requestUpdate(device: number, cb: Function) {
-        this.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
+    public sendPosition(device: number, targetPos: number, cb: Function = () => {}) {
+        const commeoTargetPos = targetPos > 0 ? maxPosition - Math.min(Math.round(targetPos / 100 * maxPosition), maxPosition) : maxPosition;
+        this.openPort(() => {
+            this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
+        });
+    }
+
+    public requestUpdate(device: number, cb: Function = () => {}) {
+        this.openPort(() => {
+            this.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
+        });
     }
 }
