@@ -210,8 +210,12 @@ function () {
 
       var cb = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : function () {};
       var commeoTargetPos = targetPos > 0 ? maxPosition - Math.min(Math.round(targetPos / 100 * maxPosition), maxPosition) : maxPosition;
-      this.openPort(function () {
-        _this2.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
+      this.openPort(function (isOpen) {
+        if (isOpen) {
+          _this2.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
+        } else {
+          throw new Error("Port not open");
+        }
       });
     }
   }, {
@@ -220,8 +224,12 @@ function () {
       var _this3 = this;
 
       var cb = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : function () {};
-      this.openPort(function () {
-        _this3.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
+      this.openPort(function (isOpen) {
+        if (isOpen) {
+          _this3.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
+        } else {
+          throw new Error("Port not open");
+        }
       });
     }
   }]);

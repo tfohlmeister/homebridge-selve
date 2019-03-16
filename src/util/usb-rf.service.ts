@@ -93,14 +93,22 @@ export class USBRfService {
 
     public sendPosition(device: number, targetPos: number, cb: Function = () => {}) {
         const commeoTargetPos = targetPos > 0 ? maxPosition - Math.min(Math.round(targetPos / 100 * maxPosition), maxPosition) : maxPosition;
-        this.openPort(() => {
-            this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
+        this.openPort((isOpen) => {
+            if (isOpen) {
+                this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
+            } else {
+                throw new Error("Port not open");
+            }
         });
     }
 
     public requestUpdate(device: number, cb: Function = () => {}) {
-        this.openPort(() => {
-            this.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
+        this.openPort((isOpen) => {
+            if (isOpen) {
+                this.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
+            } else {
+                throw new Error("Port not open");
+            }
         });
     }
 }
