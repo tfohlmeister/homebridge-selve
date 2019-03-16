@@ -4,18 +4,21 @@ require("@babel/polyfill");
 
 const EventEmitter = require('events');
 const SerialPort = require('serialport');
-const parser = require('fast-xml-parser');
+const xmlParser = require('fast-xml-parser');
+const seqqueue = require('seq-queue');
 
+const queue = seqqueue.createQueue(100);
 const maxPosition = 65535;
+const timeout = 10000;
 
 export class USBRfService {
     /* Make sure we have singletons (each port opens only once) */
     static instances = new Map<string, USBRfService>();
-    static getInstance(port: string, baud: number, log: Function): USBRfService {
+    static getInstance(port: string, baud: number): USBRfService {
         if (this.instances.get(port) !== undefined) {
             return this.instances.get(port) as USBRfService;
         } else {
-            const instance = new USBRfService(port, baud, log);
+            const instance = new USBRfService(port, baud);
             this.instances.set(port, instance);
             return instance;
         }
@@ -24,40 +27,38 @@ export class USBRfService {
     private port: string;
     private baud: number;
     private activePort;
-    private log: Function;
+    private parser;
     public eventEmitter = new EventEmitter();
     private eventString = '';
 
-    constructor(port: string, baud: number = 115200, log: Function) {
+    constructor(port: string, baud: number = 115200) {
         this.port = port;
         this.baud = baud;
-        this.log = log;
 
-        const parser = new SerialPort.parsers.Delimiter({
+        this.parser = new SerialPort.parsers.Delimiter({
             delimiter: '\r\n'
         });
-        parser.on('data', this.handleData.bind(this));
-        this.openPort();
+        this.parser.on('data', this.handleData.bind(this));
     }
 
     private handleData(data: Buffer) {
         this.eventString += data.toString();
-        if (data.toString() === '</methodResponse>') {
-            this.eventString = '';
-        } else if (data.toString() === '</methodCall>') {
+        if (data.toString() === '</methodResponse>' || data.toString() === '</methodCall>') {
             this.parseXML(this.eventString);
             this.eventString = '';
         }
     }
 
     private parseXML(input: string) {
-        const data = parser.parse(input);
-        if (!data.methodCall || data.methodCall.methodName !== 'selve.GW.event.device') {
-            this.log("Don't care about:");
-            this.log(data);
+        const data = xmlParser.parse(input);
+        if (!data.methodCall && !data.methodResponse) {
+            console.log("Ignoring", data);
+            return;
+        } else if (data.methodResponse && data.methodResponse.fault) {
+            console.error('ERROR', data.methodResponse.fault);
             return;
         }
-        const payload = data.methodCall.array.int;
+        const payload = data.methodCall ? data.methodCall.array.int : data.methodResponse.array.int;
 
         const device = payload[0];
         const PositionState = payload[1] === 1 ? HomebridgePositionState.STOPPED
@@ -68,7 +69,6 @@ export class USBRfService {
         const ObstructionDetected = flags[0] === '1' || flags[1] === '1' || flags[2] === '1';
         
         this.eventEmitter.emit(String(device), {
-            device,
             CurrentPosition,
             PositionState,
             ObstructionDetected
@@ -77,41 +77,44 @@ export class USBRfService {
 
     private openPort(cb: Function = () => {}) {
         if (this.activePort !== undefined && this.activePort.isOpen) {
-            cb(true);
-            return
+            return cb(true);
         }
         this.activePort = new SerialPort(this.port, {
             baudRate: this.baud
         }, (err) => {
             if (err) {
-                this.log(err.message);
+                console.error(err.message);
                 this.activePort = undefined;
+                return cb(false);
             } else {
-                this.log(`Port ${this.port} opened.`);
-                this.activePort.pipe(parser);
+                return cb(true);
             }
-            cb(!!!err);
         });
+        this.activePort.pipe(this.parser);
+    }
+
+    private write(data: string, cb) {
+        queue.push((task) => {
+            this.openPort((isOpen) => {
+                if (isOpen) {
+                    this.activePort.write(data, (err) => {
+                        cb(err);
+                        setTimeout(task.done, 250); // give device time to settle
+                    });
+                } else {
+                    cb(new Error("Port not open"));
+                    task.done();
+                }
+            });
+        }, () => cb(new Error("Timeout")), timeout);
     }
 
     public sendPosition(device: number, targetPos: number, cb: Function = () => {}) {
         const commeoTargetPos = targetPos > 0 ? maxPosition - Math.min(Math.round(targetPos / 100 * maxPosition), maxPosition) : maxPosition;
-        this.openPort((isOpen) => {
-            if (isOpen) {
-                this.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
-            } else {
-                cb(new Error("Port not open"));
-            }
-        });
+        this.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
     }
 
     public requestUpdate(device: number, cb: Function = () => {}) {
-        this.openPort((isOpen) => {
-            if (isOpen) {
-                this.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
-            } else {
-                cb(new Error("Port not open"));
-            }
-        });
+        this.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><array><int>${device}</int></array></methodCall>`, cb);
     }
 }
