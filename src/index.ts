@@ -42,7 +42,7 @@ class SelveAccessory {
       throw new Error('Option "device" needs to be set');
     }
 
-    this.usbService = USBRfService.getInstance(port, config["baud"], log);
+    this.usbService = USBRfService.getInstance(port, config["baud"]);
 
     // setup services
     this.shutterService = new Service.WindowCovering(this.name, `shutter`);
@@ -75,7 +75,7 @@ class SelveAccessory {
 
     // handle status updates
     this.usbService.eventEmitter.on(String(this.device), (newState: Partial<CommeoState>) => {
-      console.log("Status update!", newState);
+      log("New status", newState);
       if (newState.CurrentPosition !== undefined) {
         this.shutterService.getCharacteristic(Characteristic.CurrentPosition).setValue(newState.CurrentPosition);
       }

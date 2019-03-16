@@ -95,9 +95,13 @@ var EventEmitter = require('events');
 
 var SerialPort = require('serialport');
 
-var parser = require('fast-xml-parser');
+var xmlParser = require('fast-xml-parser');
 
+var seqqueue = require('seq-queue');
+
+var queue = seqqueue.createQueue(100);
 var maxPosition = 65535;
+var timeout = 10000;
 var USBRfService =
 /*#__PURE__*/
 function () {
@@ -105,11 +109,11 @@ function () {
     key: "getInstance",
 
     /* Make sure we have singletons (each port opens only once) */
-    value: function getInstance(port, baud, log) {
+    value: function getInstance(port, baud) {
       if (this.instances.get(port) !== undefined) {
         return this.instances.get(port);
       } else {
-        var instance = new USBRfService(port, baud, log);
+        var instance = new USBRfService(port, baud);
         this.instances.set(port, instance);
         return instance;
       }
@@ -118,7 +122,6 @@ function () {
 
   function USBRfService(port) {
     var baud = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 115200;
-    var log = arguments.length > 2 ? arguments[2] : undefined;
 
     _classCallCheck(this, USBRfService);
 
@@ -128,7 +131,7 @@ function () {
 
     _defineProperty(this, "activePort", void 0);
 
-    _defineProperty(this, "log", void 0);
+    _defineProperty(this, "parser", void 0);
 
     _defineProperty(this, "eventEmitter", new EventEmitter());
 
@@ -136,12 +139,10 @@ function () {
 
     this.port = port;
     this.baud = baud;
-    this.log = log;
-    var parser = new SerialPort.parsers.Delimiter({
+    this.parser = new SerialPort.parsers.Delimiter({
       delimiter: '\r\n'
     });
-    parser.on('data', this.handleData.bind(this));
-    this.openPort();
+    this.parser.on('data', this.handleData.bind(this));
   }
 
   _createClass(USBRfService, [{
@@ -149,9 +150,7 @@ function () {
     value: function handleData(data) {
       this.eventString += data.toString();
 
-      if (data.toString() === '</methodResponse>') {
-        this.eventString = '';
-      } else if (data.toString() === '</methodCall>') {
+      if (data.toString() === '</methodResponse>' || data.toString() === '</methodCall>') {
         this.parseXML(this.eventString);
         this.eventString = '';
       }
@@ -159,22 +158,23 @@ function () {
   }, {
     key: "parseXML",
     value: function parseXML(input) {
-      var data = parser.parse(input);
+      var data = xmlParser.parse(input);
 
-      if (!data.methodCall || data.methodCall.methodName !== 'selve.GW.event.device') {
-        this.log("Don't care about:");
-        this.log(data);
+      if (!data.methodCall && !data.methodResponse) {
+        console.log("Ignoring", data);
+        return;
+      } else if (data.methodResponse && data.methodResponse.fault) {
+        console.error('ERROR', data.methodResponse.fault);
         return;
       }
 
-      var payload = data.methodCall.array.int;
+      var payload = data.methodCall ? data.methodCall.array.int : data.methodResponse.array.int;
       var device = payload[0];
       var PositionState = payload[1] === 1 ? HomebridgePositionState.STOPPED : payload[1] === 2 ? HomebridgePositionState.DECREASING : HomebridgePositionState.INCREASING;
       var CurrentPosition = Math.min(100, Math.round(100 - payload[2] / maxPosition * 100));
       var flags = String(payload[4]).split('');
       var ObstructionDetected = flags[0] === '1' || flags[1] === '1' || flags[2] === '1';
       this.eventEmitter.emit(String(device), {
-        device,
         CurrentPosition,
         PositionState,
         ObstructionDetected
@@ -188,54 +188,55 @@ function () {
       var cb = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : function () {};
 
       if (this.activePort !== undefined && this.activePort.isOpen) {
-        cb(true);
-        return;
+        return cb(true);
       }
 
       this.activePort = new SerialPort(this.port, {
         baudRate: this.baud
       }, function (err) {
         if (err) {
-          _this.log(err.message);
-
+          console.error(err.message);
           _this.activePort = undefined;
+          return cb(false);
         } else {
-          _this.log(`Port ${_this.port} opened.`);
-
-          _this.activePort.pipe(parser);
+          return cb(true);
         }
-
-        cb(!!!err);
       });
+      this.activePort.pipe(this.parser);
+    }
+  }, {
+    key: "write",
+    value: function write(data, cb) {
+      var _this2 = this;
+
+      queue.push(function (task) {
+        _this2.openPort(function (isOpen) {
+          if (isOpen) {
+            _this2.activePort.write(data, function (err) {
+              cb(err);
+              setTimeout(task.done, 250); // give device time to settle
+            });
+          } else {
+            cb(new Error("Port not open"));
+            task.done();
+          }
+        });
+      }, function () {
+        return cb(new Error("Timeout"));
+      }, timeout);
     }
   }, {
     key: "sendPosition",
     value: function sendPosition(device, targetPos) {
-      var _this2 = this;
-
       var cb = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : function () {};
       var commeoTargetPos = targetPos > 0 ? maxPosition - Math.min(Math.round(targetPos / 100 * maxPosition), maxPosition) : maxPosition;
-      this.openPort(function (isOpen) {
-        if (isOpen) {
-          _this2.activePort.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
-        } else {
-          cb(new Error("Port not open"));
-        }
-      });
+      this.write(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
     }
   }, {
     key: "requestUpdate",
     value: function requestUpdate(device) {
-      var _this3 = this;
-
       var cb = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : function () {};
-      this.openPort(function (isOpen) {
-        if (isOpen) {
-          _this3.activePort.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><int>${device}</int></methodCall>`, cb);
-        } else {
-          cb(new Error("Port not open"));
-        }
-      });
+      this.write(`<methodCall><methodName>selve.GW.device.getValues</methodName><array><int>${device}</int></array></methodCall>`, cb);
     }
   }]);
 
@@ -325,7 +326,7 @@ var SelveAccessory = function SelveAccessory(log, config) {
     throw new Error('Option "device" needs to be set');
   }
 
-  this.usbService = USBRfService.getInstance(port, config["baud"], log); // setup services
+  this.usbService = USBRfService.getInstance(port, config["baud"]); // setup services
 
   this.shutterService = new Service.WindowCovering(this.name, `shutter`);
   this.state = new CommeoState(this.device);
@@ -338,7 +339,7 @@ var SelveAccessory = function SelveAccessory(log, config) {
   this.informationService.setCharacteristic(Characteristic.Manufacturer, this.manufacturer).setCharacteristic(Characteristic.Model, this.model).setCharacteristic(Characteristic.SerialNumber, this.serial); // handle status updates
 
   this.usbService.eventEmitter.on(String(this.device), function (newState) {
-    console.log("Status update!", newState);
+    log("New status", newState);
 
     if (newState.CurrentPosition !== undefined) {
       _this.shutterService.getCharacteristic(Characteristic.CurrentPosition).setValue(newState.CurrentPosition);
