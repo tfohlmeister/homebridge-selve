@@ -93,12 +93,12 @@ export class USBRfService {
         this.activePort.pipe(this.parser);
     }
 
-    private write(data: string, cb) {
+    private write(data: string, cb: Function) {
         queue.push((task) => {
             this.openPort((isOpen) => {
                 if (isOpen) {
                     this.activePort.write(data, (err) => {
-                        cb(err);
+                        cb(null, err);
                         setTimeout(task.done, 250); // give device time to settle
                     });
                 } else {
