@@ -213,7 +213,7 @@ function () {
         _this2.openPort(function (isOpen) {
           if (isOpen) {
             _this2.activePort.write(data, function (err) {
-              cb(err);
+              cb(null, err);
               setTimeout(task.done, 250); // give device time to settle
             });
           } else {
