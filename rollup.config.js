@@ -21,7 +21,7 @@ export default {
     }),
     copy({
       targets: [
-        { src: 'config.schema.json', dest: 'dist/config.schema.json' }
+        { src: 'src/config.schema.json', dest: 'dist' }
       ]
     })
   ],
