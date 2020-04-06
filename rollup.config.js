@@ -1,5 +1,4 @@
 import babel from 'rollup-plugin-babel';
-import copy from 'rollup-plugin-copy';
 import resolve from 'rollup-plugin-node-resolve';
 
 const extensions = [".ts", ".js"];
@@ -18,11 +17,6 @@ export default {
     babel({
       extensions,
       exclude: "node_modules/**", // only transpile our source code
-    }),
-    copy({
-      targets: [
-        { src: 'src/config.schema.json', dest: 'dist' }
-      ]
     })
   ],
 };
