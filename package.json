@@ -1,6 +1,6 @@
 {
   "name": "homebridge-selve",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Selve Remote Shutter Support for Homebridge: https://github.com/nfarina/homebridge",
   "license": "MIT",
   "keywords": [
@@ -22,10 +22,10 @@
     "dist"
   ],
   "dependencies": {
-    "@babel/polyfill": "^7.0.0",
-    "fast-xml-parser": "^3.12.14",
+    "@babel/polyfill": "^7.8.7",
+    "fast-xml-parser": "^3.16.0",
     "seq-queue": "0.0.5",
-    "serialport": "^7.1.4",
+    "serialport": "^7.1.5",
     "xmldoc": "^1.1.2"
   },
   "devDependencies": {
