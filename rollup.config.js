@@ -1,5 +1,6 @@
-import babel from "rollup-plugin-babel";
-import resolve from "rollup-plugin-node-resolve";
+import babel from 'rollup-plugin-babel';
+import copy from 'rollup-plugin-copy';
+import resolve from 'rollup-plugin-node-resolve';
 
 const extensions = [".ts", ".js"];
 
@@ -18,5 +19,10 @@ export default {
       extensions,
       exclude: "node_modules/**", // only transpile our source code
     }),
+    copy({
+      targets: [
+        { src: 'config.schema.json', dest: 'dist/config.schema.json' }
+      ]
+    })
   ],
 };

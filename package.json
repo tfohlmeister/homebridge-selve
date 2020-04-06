@@ -36,6 +36,7 @@
     "prettier": "^1.16.4",
     "rollup": "^0.67.1",
     "rollup-plugin-babel": "^4.0.3",
+    "rollup-plugin-copy": "^3.3.0",
     "rollup-plugin-node-resolve": "^3.4.0"
   },
   "scripts": {
