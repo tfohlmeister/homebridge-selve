@@ -20,7 +20,7 @@
             },
             "device": {
                 "title": "Device Number",
-                "description": "Decice number set during pairing",
+                "description": "Device number set during pairing",
                 "type": "integer",
                 "required": true,
                 "default": 0,
