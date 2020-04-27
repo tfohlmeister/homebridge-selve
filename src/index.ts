@@ -104,7 +104,9 @@ class SelveShutter implements AccessoryPlugin {
     });
 
     // get current position
-    this.usbService.requestUpdate(this.device);
+    this.usbService.requestUpdate(this.device).catch(error => {
+      log.error(error);
+    });
   }
 
   public getServices(): Service[] {

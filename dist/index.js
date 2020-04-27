@@ -75,7 +75,9 @@ class SelveShutter {
             };
         });
         // get current position
-        this.usbService.requestUpdate(this.device);
+        this.usbService.requestUpdate(this.device).catch(error => {
+            log.error(error);
+        });
     }
     getServices() {
         return [
