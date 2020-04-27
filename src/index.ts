@@ -8,7 +8,7 @@ let Service: any, Characteristic: any;
 export default function(homebridge: any) {
   Service = homebridge.hap.Service;
   Characteristic = homebridge.hap.Characteristic;
-  homebridge.registerAccessory("homebridge-selve-commeo", "Selve", SelveAccessory);
+  homebridge.registerAccessory("homebridge-selve", "Selve", SelveAccessory);
 }
 
 class SelveAccessory {
