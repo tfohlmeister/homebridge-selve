@@ -14,7 +14,7 @@
             },
             "port": {
                 "title": "USB Port",
-                "description": "Device path to Selve USB-RF module (e.g. /dev/tty.usbserial)",
+                "description": "Device path to Selve USB-RF module (e.g. /dev/tty.USB0)",
                 "type": "string",
                 "required": true
             },
