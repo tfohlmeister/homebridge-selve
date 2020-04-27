@@ -1,11 +1,12 @@
 {
   "name": "homebridge-selve",
-  "version": "0.2.8",
-  "description": "Selve Remote Shutter Support for Homebridge: https://github.com/nfarina/homebridge",
+  "version": "1.0.0",
+  "description": "Selve Remote Shutter Support for Homebridge: https://github.com/homebridge/homebridge",
   "license": "MIT",
   "keywords": [
     "homebridge-plugin"
   ],
+  "author": "Thorben Fohlmeister <thorben@fohlmeister.com>",
   "repository": {
     "type": "git",
     "url": "git://github.com/tfohlmeister/homebridge-selve.git"
@@ -14,11 +15,11 @@
     "url": "http://github.com/tfohlmeister/homebridge-selve/issues"
   },
   "engines": {
-    "node": ">=0.12.0",
-    "homebridge": ">=0.2.0"
+    "homebridge": ">=1.0.0"
   },
   "main": "dist/index.js",
   "files": [
+    "LICENSE",
     "dist",
     "config.schema.json"
   ],
