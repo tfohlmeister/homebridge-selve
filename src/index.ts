@@ -18,7 +18,7 @@ let hap: HAP;
 
 export = (api: API) => {
   hap = api.hap;
-  api.registerAccessory("SelveShutter", SelveShutter);
+  api.registerAccessory("Selve", SelveShutter);
 };
 
 class SelveShutter implements AccessoryPlugin {
