@@ -8,7 +8,7 @@
 		"ES2017",
 		"ES2018"
 	  ],
-	  "sourceMap": true,
+	  "sourceMap": false,
 	  "rootDir": "src",
 	  "outDir": "dist",
   
