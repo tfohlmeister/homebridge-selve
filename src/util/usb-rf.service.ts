@@ -13,11 +13,11 @@ const COMMEO_MAX_POSITION = 65535;
 export class USBRfService {
     /* Make sure we have singletons (each port opens only once) */
     static instances = new Map<string, USBRfService>();
-    static getInstance(port: string, baud: number): USBRfService {
+    static getInstance(port: string): USBRfService {
         if (this.instances.get(port) !== undefined) {
             return this.instances.get(port) as USBRfService;
         } else {
-            const instance = new USBRfService(port, baud);
+            const instance = new USBRfService(port);
             this.instances.set(port, instance);
             return instance;
         }
@@ -26,15 +26,14 @@ export class USBRfService {
     // queue to safely handle multiple commands. Timeout 15 seconds.
     private q = queue({ concurrency: 1, autostart: true, timeout: 15 * 1000 });
     private port: string;
-    private baud: number;
+    private baud: number = 115200;
     private activePort?: SerialPort;
     private parser: SerialPort.parsers.Delimiter;
     public eventEmitter = new events.EventEmitter();
     private eventString = '';
 
-    constructor(port: string, baud: number = 115200) {
+    constructor(port: string) {
         this.port = port;
-        this.baud = baud;
 
         this.parser = new SerialPort.parsers.Delimiter({
             delimiter: '\r\n'
