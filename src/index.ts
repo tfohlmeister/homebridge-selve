@@ -111,17 +111,23 @@ class SelveShutter implements AccessoryPlugin {
     this.usbService.requestUpdate(this.device);
   }
 
-  getServices = () => [this.informationService, this.shutterService];
+  public getServices(): Service[] {
+    return [
+      this.informationService,
+      this.shutterService,
+    ];
+  }
 
-  getCurrentPosition = (cb: CharacteristicGetCallback<number>) => cb(null, this.state.CurrentPosition);
-  getTargetPosition = (cb: CharacteristicGetCallback<number>) => cb(null, this.state.TargetPosition);
-  setTargetPosition = (newPosition: CharacteristicValue, cb: CharacteristicSetCallback) => {
+
+  private getCurrentPosition = (cb: CharacteristicGetCallback<number>) => cb(null, this.state.CurrentPosition);
+  private getTargetPosition = (cb: CharacteristicGetCallback<number>) => cb(null, this.state.TargetPosition);
+  private setTargetPosition = (newPosition: CharacteristicValue, cb: CharacteristicSetCallback) => {
     this.log("Set new target position to", newPosition);
     this.state.TargetPosition = Number(newPosition);
     this.usbService.sendPosition(this.state.device, this.state.TargetPosition)
       .then(() => cb())
       .catch(error => cb(error));
   };
-  getPositionState = (cb: CharacteristicGetCallback<HomebridgePositionState>) => cb(null, this.state.PositionState);
-  getObstructionDetected = (cb: CharacteristicGetCallback<boolean>) => cb(null, this.state.ObstructionDetected);
+  private getPositionState = (cb: CharacteristicGetCallback<HomebridgePositionState>) => cb(null, this.state.PositionState);
+  private getObstructionDetected = (cb: CharacteristicGetCallback<boolean>) => cb(null, this.state.ObstructionDetected);
 }
