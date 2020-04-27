@@ -86,5 +86,5 @@ class SelveShutter {
 }
 module.exports = (api) => {
     hap = api.hap;
-    api.registerAccessory("SelveShutter", SelveShutter);
+    api.registerAccessory("Selve", SelveShutter);
 };
