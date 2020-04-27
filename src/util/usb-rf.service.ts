@@ -2,7 +2,6 @@ import events from 'events';
 import xmlParser from 'fast-xml-parser';
 import queue from 'queue';
 import SerialPort from 'serialport';
-import { promisify } from 'util';
 
 import { CommeoState, HomebridgePositionState } from '../data/commeo-state';
 import { wait } from './wait';
@@ -99,15 +98,22 @@ export class USBRfService {
         return new Promise((resolve, reject) => {
             const job = () => this.openPort()
             .then(() => {
-                return promisify(this.activePort!.write)(data) as Promise<void>;
+                return new Promise((writeResolve, writeReject) => {
+                    this.activePort!.write(data, error => {
+                        if (error) {
+                            return writeReject(error);
+                        }
+                        writeResolve();
+                    });
+                });
             })
-            .then(() => {
+            .then((res) => {
                 resolve();
                 return wait(100); // give device time to settle
             })
             .catch(error => {
                 reject(error);
-                throw Error(error);
+                throw new Error(error);
             });
 
             this.q.push(job);

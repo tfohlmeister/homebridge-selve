@@ -7,7 +7,6 @@ const events_1 = __importDefault(require("events"));
 const fast_xml_parser_1 = __importDefault(require("fast-xml-parser"));
 const queue_1 = __importDefault(require("queue"));
 const serialport_1 = __importDefault(require("serialport"));
-const util_1 = require("util");
 const commeo_state_1 = require("../data/commeo-state");
 const wait_1 = require("./wait");
 const COMMEO_MAX_POSITION = 65535;
@@ -88,15 +87,22 @@ class USBRfService {
         return new Promise((resolve, reject) => {
             const job = () => this.openPort()
                 .then(() => {
-                return util_1.promisify(this.activePort.write)(data);
+                return new Promise((writeResolve, writeReject) => {
+                    this.activePort.write(data, error => {
+                        if (error) {
+                            return writeReject(error);
+                        }
+                        writeResolve();
+                    });
+                });
             })
-                .then(() => {
+                .then((res) => {
                 resolve();
                 return wait_1.wait(100); // give device time to settle
             })
                 .catch(error => {
                 reject(error);
-                throw Error(error);
+                throw new Error(error);
             });
             this.q.push(job);
         });
