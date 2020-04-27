@@ -1,7 +1,6 @@
 import {
   AccessoryPlugin,
   API,
-  Characteristic,
   CharacteristicEventTypes,
   CharacteristicGetCallback,
   CharacteristicSetCallback,
@@ -77,28 +76,28 @@ class SelveShutter implements AccessoryPlugin {
 
 
     // setup info service
-    this.informationService = new Service.AccessoryInformation();
+    this.informationService = new hap.Service.AccessoryInformation();
     if (config.manufacturer) {
-      this.informationService.setCharacteristic(Characteristic.Manufacturer, config.manufacturer);
+      this.informationService.setCharacteristic(hap.Characteristic.Manufacturer, config.manufacturer);
     }
     if (config.model) {
-      this.informationService.setCharacteristic(Characteristic.Model, config.model);
+      this.informationService.setCharacteristic(hap.Characteristic.Model, config.model);
     }
     if (config.serial) {
-      this.informationService.setCharacteristic(Characteristic.SerialNumber, config.serial);
+      this.informationService.setCharacteristic(hap.Characteristic.SerialNumber, config.serial);
     }
 
     // handle status updates
     this.usbService.eventEmitter.on(String(this.device), (newState: Partial<CommeoState>) => {
       log("New status", newState);
       if (newState.CurrentPosition !== undefined) {
-        this.shutterService.getCharacteristic(Characteristic.CurrentPosition).setValue(newState.CurrentPosition);
+        this.shutterService.getCharacteristic(hap.Characteristic.CurrentPosition).setValue(newState.CurrentPosition);
       }
       if (newState.PositionState !== undefined) {
-        this.shutterService.getCharacteristic(Characteristic.PositionState).setValue(newState.PositionState);
+        this.shutterService.getCharacteristic(hap.Characteristic.PositionState).setValue(newState.PositionState);
       }
       if (newState.ObstructionDetected !== undefined) {
-        this.shutterService.getCharacteristic(Characteristic.ObstructionDetected).setValue(newState.ObstructionDetected);
+        this.shutterService.getCharacteristic(hap.Characteristic.ObstructionDetected).setValue(newState.ObstructionDetected);
       }
       
       // upgrade current state with new data
