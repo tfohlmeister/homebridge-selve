@@ -23,14 +23,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - name: Setup Registry
+        uses: actions/setup-node@v1
         with:
           node-version: 12
-      - name: Install dependencies
-        run: |
-          echo "//npm.pkg.github.com/:_authToken=$NODE_AUTH_TOKEN" > ~/.npmrc
-          npm ci
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@tfohlmeister'
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
       - name: Publish
-        run: npm publish --tag next
+        run: npm publish --registry npm.pkg.github.com --tag next

@@ -1,10 +1,14 @@
 {
   "name": "homebridge-selve",
-  "version": "1.0.0",
+  "version": "1.0.0-RC1",
   "description": "Selve Remote Shutter Support for Homebridge: https://github.com/homebridge/homebridge",
   "license": "MIT",
   "keywords": [
-    "homebridge-plugin"
+    "homebridge-plugin",
+    "selve",
+    "shutter",
+    "rollershutter",
+    "homebridge"
   ],
   "author": "Thorben Fohlmeister <thorben@fohlmeister.com>",
   "repository": {
