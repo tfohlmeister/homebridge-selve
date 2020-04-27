@@ -27,7 +27,7 @@ export class USBRfService {
     private q = queue({ concurrency: 1, autostart: true, timeout: 15 * 1000 });
     private port: string;
     private baud: number = 115200;
-    private activePort?: SerialPort;
+    private activePort: SerialPort | undefined;
     private parser: SerialPort.parsers.Delimiter;
     public eventEmitter = new events.EventEmitter();
     private eventString = '';
