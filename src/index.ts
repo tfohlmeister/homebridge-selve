@@ -45,15 +45,11 @@ class SelveShutter implements AccessoryPlugin {
     if (port === undefined) {
       throw new Error('Option "port" needs to be set');
     }
-    const baud = Number(config.baud);
-    if (baud === undefined) {
-      throw new Error('Option "baud" needs to be set');
-    }
 
     this.state = new CommeoState(this.device);
 
     // setup services
-    this.usbService = USBRfService.getInstance(port, baud);
+    this.usbService = USBRfService.getInstance(port);
     this.shutterService = new hap.Service.WindowCovering(this.name);
     this.informationService = new hap.Service.AccessoryInformation();
 
