@@ -29,7 +29,7 @@
   ],
   "dependencies": {
     "fast-xml-parser": "^3.16.0",
-    "queue": "^6.0.1",
+    "seq-queue": "0.0.5",
     "serialport": "^7.1.5",
     "xmldoc": "^1.1.2"
   },
