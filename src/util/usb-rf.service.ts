@@ -25,8 +25,6 @@ export class USBRfService {
         }
     }
 
-    // queue to safely handle multiple commands. Timeout 15 seconds.
-    private q = queue({ concurrency: 1, autostart: true, timeout: 15 * 1000 });
     private port: string;
     private baud: number = 115200;
     private activePort: SerialPort | undefined;
@@ -97,16 +95,14 @@ export class USBRfService {
 
     private writeSerial(data: string, cb: ErrorValueCallback) {
         queue.push((task: SeqqueueTask) => {
-            this.openPort((isOpen) => {
-                if (isOpen) {
-                    this.activePort!.write(data, (err) => {
-                        cb(err ? err : undefined);
-                        setTimeout(task.done, 250); // give device time to settle
-                    });
-                } else {
-                    cb(new Error('Port not open'));
-                    task.done();
+            this.openPort((error) => {
+                if (error) {
+                    return cb(error);
                 }
+                this.activePort!.write(data, (err) => {
+                    cb(err ? err : undefined);
+                    setTimeout(task.done, 250); // give device time to settle
+                });
             });
         }, () => cb(new Error('Timeout')), COMMEO_TIMEOUT);
     }

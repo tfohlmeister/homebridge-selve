@@ -46,7 +46,7 @@
     "watch-ts": "tsc -w",
     "build": "npm run clean && tsc",
     "debug": "npm run build && npm link && npm run watch-debug",
-    "serve-debug": "npx --node-arg=\"--inspect-brk\" homebridge -D -I",
+    "serve-debug": "npx homebridge -D",
     "watch-debug": "concurrently -k -p \"[{name}]\" -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold,green.bold\" \"npm run watch-ts\" \"npm run serve-debug\"",
     "version": "npm run clean && npm run build",
     "postpublish": "npm run clean"

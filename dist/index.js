@@ -9,9 +9,7 @@ class SelveShutter {
         this.setTargetPosition = (newPosition, cb) => {
             this.log("Set new target position to", newPosition);
             this.state.TargetPosition = Number(newPosition);
-            this.usbService.sendPosition(this.state.device, this.state.TargetPosition)
-                .then(() => cb())
-                .catch(error => cb(error));
+            this.usbService.sendPosition(this.state.device, this.state.TargetPosition, cb);
         };
         this.getPositionState = (cb) => cb(null, this.state.PositionState);
         this.getObstructionDetected = (cb) => cb(null, this.state.ObstructionDetected);
@@ -75,9 +73,7 @@ class SelveShutter {
             };
         });
         // get current position
-        this.usbService.requestUpdate(this.device).catch(error => {
-            log.error(error);
-        });
+        this.usbService.requestUpdate(this.device, err => !!err && log.error(err.message));
     }
     getServices() {
         return [
