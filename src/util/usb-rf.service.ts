@@ -1,13 +1,16 @@
 import events from 'events';
 import xmlParser from 'fast-xml-parser';
-import queue from 'queue';
 import SerialPort from 'serialport';
 
 import { CommeoState, HomebridgePositionState } from '../data/commeo-state';
-import { wait } from './wait';
+import { ErrorValueCallback } from '../data/error-value.callback';
+import { SeqqueueTask } from '../data/seqqueue-task';
 
+const seqqueue = require('seq-queue');
+const queue = seqqueue.createQueue(100);
 
 const COMMEO_MAX_POSITION = 65535;
+const COMMEO_TIMEOUT = 10000;
 
 export class USBRfService {
     /* Make sure we have singletons (each port opens only once) */
@@ -74,50 +77,38 @@ export class USBRfService {
         } as Partial<CommeoState>);
     }
 
-    private openPort(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            if (this.activePort !== undefined && this.activePort.isOpen) {
-                return resolve();
+    private openPort(cb: ErrorValueCallback) {
+        if (this.activePort !== undefined && this.activePort.isOpen) {
+            return cb();
+        }
+        this.activePort = new SerialPort(this.port, {
+            baudRate: this.baud
+        }, (err) => {
+            if (err) {
+                console.error(err.message);
+                this.activePort = undefined;
+                return cb(err);
+            } else {
+                return cb();
             }
-
-            this.activePort = new SerialPort(this.port, {
-                baudRate: this.baud
-            }, (err) => {
-                if (err) {
-                    this.activePort = undefined;
-                    return reject(err.message);
-                } else {
-                    return resolve();
-                }
-            });
-            this.activePort.pipe(this.parser);
-        })        
+        });
+        this.activePort.pipe(this.parser);
     }
 
-    private writeSerial(data: string): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const job = () => this.openPort()
-            .then(() => {
-                return new Promise((writeResolve, writeReject) => {
-                    this.activePort!.write(data, error => {
-                        if (error) {
-                            return writeReject(error);
-                        }
-                        writeResolve();
+    private writeSerial(data: string, cb: ErrorValueCallback) {
+        queue.push((task: SeqqueueTask) => {
+            this.openPort((isOpen) => {
+                if (isOpen) {
+                    this.activePort!.write(data, (err) => {
+                        cb(err ? err : undefined);
+                        setTimeout(task.done, 250); // give device time to settle
                     });
-                });
-            })
-            .then((res) => {
-                resolve();
-                return wait(100); // give device time to settle
-            })
-            .catch(error => {
-                reject(error);
-                throw new Error(error);
+                } else {
+                    cb(new Error('Port not open'));
+                    task.done();
+                }
             });
-
-            this.q.push(job);
-        });
+        }, () => cb(new Error('Timeout')), COMMEO_TIMEOUT);
     }
 
     private convertPositionToHomekit(commeoPos: number) : number {
@@ -128,12 +119,18 @@ export class USBRfService {
         return homekitPos > 0 ? COMMEO_MAX_POSITION - Math.min(Math.round(homekitPos / 100 * COMMEO_MAX_POSITION), COMMEO_MAX_POSITION) : COMMEO_MAX_POSITION;
     }
 
-    public sendPosition(device: number, targetPos: number): Promise<void> {
+    public sendPosition(device: number, targetPos: number, cb: ErrorValueCallback): void {
         const commeoTargetPos = this.convertPositionToCommeo(targetPos);
-        return this.writeSerial(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`);
+        this.writeSerial(
+            `<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`,
+            cb
+        );
     }
 
-    public requestUpdate(device: number): Promise<void> {
-        return this.writeSerial(`<methodCall><methodName>selve.GW.device.getValues</methodName><array><int>${device}</int></array></methodCall>`);
+    public requestUpdate(device: number, cb: ErrorValueCallback): void {
+        this.writeSerial(
+            `<methodCall><methodName>selve.GW.device.getValues</methodName><array><int>${device}</int></array></methodCall>`,
+            cb
+        );
     }
 }

@@ -104,9 +104,7 @@ class SelveShutter implements AccessoryPlugin {
     });
 
     // get current position
-    this.usbService.requestUpdate(this.device).catch(error => {
-      log.error(error);
-    });
+    this.usbService.requestUpdate(this.device, err => !!err && log.error(err.message));
   }
 
   public getServices(): Service[] {
@@ -122,9 +120,7 @@ class SelveShutter implements AccessoryPlugin {
   private setTargetPosition = (newPosition: CharacteristicValue, cb: CharacteristicSetCallback) => {
     this.log("Set new target position to", newPosition);
     this.state.TargetPosition = Number(newPosition);
-    this.usbService.sendPosition(this.state.device, this.state.TargetPosition)
-      .then(() => cb())
-      .catch(error => cb(error));
+    this.usbService.sendPosition(this.state.device, this.state.TargetPosition, cb)
   };
   private getPositionState = (cb: CharacteristicGetCallback<HomebridgePositionState>) => cb(null, this.state.PositionState);
   private getObstructionDetected = (cb: CharacteristicGetCallback<boolean>) => cb(null, this.state.ObstructionDetected);
