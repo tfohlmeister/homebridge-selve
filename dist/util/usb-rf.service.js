@@ -5,15 +5,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const events_1 = __importDefault(require("events"));
 const fast_xml_parser_1 = __importDefault(require("fast-xml-parser"));
-const queue_1 = __importDefault(require("queue"));
 const serialport_1 = __importDefault(require("serialport"));
 const commeo_state_1 = require("../data/commeo-state");
-const wait_1 = require("./wait");
+const seqqueue = require('seq-queue');
+const queue = seqqueue.createQueue(100);
 const COMMEO_MAX_POSITION = 65535;
+const COMMEO_TIMEOUT = 10000;
 class USBRfService {
     constructor(port) {
-        // queue to safely handle multiple commands. Timeout 15 seconds.
-        this.q = queue_1.default({ concurrency: 1, autostart: true, timeout: 15 * 1000 });
         this.baud = 115200;
         this.eventEmitter = new events_1.default.EventEmitter();
         this.eventString = '';
@@ -64,48 +63,36 @@ class USBRfService {
             ObstructionDetected
         });
     }
-    openPort() {
-        return new Promise((resolve, reject) => {
-            if (this.activePort !== undefined && this.activePort.isOpen) {
-                return resolve();
+    openPort(cb) {
+        if (this.activePort !== undefined && this.activePort.isOpen) {
+            return cb();
+        }
+        this.activePort = new serialport_1.default(this.port, {
+            baudRate: this.baud
+        }, (err) => {
+            if (err) {
+                console.error(err.message);
+                this.activePort = undefined;
+                return cb(err);
             }
-            this.activePort = new serialport_1.default(this.port, {
-                baudRate: this.baud
-            }, (err) => {
-                if (err) {
-                    this.activePort = undefined;
-                    return reject(err.message);
-                }
-                else {
-                    return resolve();
-                }
-            });
-            this.activePort.pipe(this.parser);
+            else {
+                return cb();
+            }
         });
+        this.activePort.pipe(this.parser);
     }
-    writeSerial(data) {
-        return new Promise((resolve, reject) => {
-            const job = () => this.openPort()
-                .then(() => {
-                return new Promise((writeResolve, writeReject) => {
-                    this.activePort.write(data, error => {
-                        if (error) {
-                            return writeReject(error);
-                        }
-                        writeResolve();
-                    });
+    writeSerial(data, cb) {
+        queue.push((task) => {
+            this.openPort((error) => {
+                if (error) {
+                    return cb(error);
+                }
+                this.activePort.write(data, (err) => {
+                    cb(err ? err : undefined);
+                    setTimeout(task.done, 250); // give device time to settle
                 });
-            })
-                .then((res) => {
-                resolve();
-                return wait_1.wait(100); // give device time to settle
-            })
-                .catch(error => {
-                reject(error);
-                throw new Error(error);
             });
-            this.q.push(job);
-        });
+        }, () => cb(new Error('Timeout')), COMMEO_TIMEOUT);
     }
     convertPositionToHomekit(commeoPos) {
         return Math.min(100, Math.round(100 - (commeoPos / COMMEO_MAX_POSITION * 100)));
@@ -113,12 +100,12 @@ class USBRfService {
     convertPositionToCommeo(homekitPos) {
         return homekitPos > 0 ? COMMEO_MAX_POSITION - Math.min(Math.round(homekitPos / 100 * COMMEO_MAX_POSITION), COMMEO_MAX_POSITION) : COMMEO_MAX_POSITION;
     }
-    sendPosition(device, targetPos) {
+    sendPosition(device, targetPos, cb) {
         const commeoTargetPos = this.convertPositionToCommeo(targetPos);
-        return this.writeSerial(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`);
+        this.writeSerial(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
     }
-    requestUpdate(device) {
-        return this.writeSerial(`<methodCall><methodName>selve.GW.device.getValues</methodName><array><int>${device}</int></array></methodCall>`);
+    requestUpdate(device, cb) {
+        this.writeSerial(`<methodCall><methodName>selve.GW.device.getValues</methodName><array><int>${device}</int></array></methodCall>`, cb);
     }
 }
 exports.USBRfService = USBRfService;
