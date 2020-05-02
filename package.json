@@ -49,7 +49,7 @@
     "debug": "npm run build && npm link && npm run watch",
     "serve": "npx homebridge -D || true",
     "watch": "concurrently -k -p \"[{name}]\" -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold,green.bold\" \"npm run watch-ts\" \"npm run serve\"",
-    "version": "npm run clean && npm run build",
+    "version": "npm run clean && npm run build && generate-changelog",
     "postpublish": "npm run clean"
   }
 }
