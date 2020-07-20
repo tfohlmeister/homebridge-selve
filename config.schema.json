@@ -2,7 +2,7 @@
     "pluginAlias": "Selve",
     "pluginType": "accessory",
     "singular": false,
-    "headerDisplay": "*Important:* For this plugin to work, you'll need to first pair the Selve USB-RF module manually to all shutters!",
+    "headerDisplay": "*Important:* For this plugin to work, you'll need to first pair the Selve USB-RF module manually with all shutters!",
     "schema": {
         "type": "object",
         "properties": {
@@ -26,6 +26,20 @@
                 "default": 0,
                 "minimum": 0,
                 "maximum": 63
+            },
+            "showIntermediate1": {
+                "title": "Show intermediate position 1 (experimental)",
+                "description": "Show a toggle button to allow moving to intermediate position 1",
+                "type": "boolean",
+                "required": false,
+                "default": false
+            },
+            "showIntermediate2": {
+                "title": "Show intermediate position 2 (experimental)",
+                "description": "Show a toggle button to allow moving to intermediate position 2",
+                "type": "boolean",
+                "required": false,
+                "default": false
             }
         }
     },

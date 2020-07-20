@@ -3,14 +3,12 @@ export class CommeoState {
     TargetPosition: number; // percentage 0 - 100, READ, WRITE, NOTIFY
     PositionState: HomebridgePositionState; // READ, NOTIFY
     ObstructionDetected: boolean; // READ, NOTIFY
-    device: number;
 
-    constructor(device: number) {
+    constructor() {
         this.CurrentPosition = 100; // assume default open
         this.TargetPosition = 100; // assume default open
         this.PositionState = HomebridgePositionState.STOPPED;
         this.ObstructionDetected = false;
-        this.device = device;
     }
 }
 
