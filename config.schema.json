@@ -27,14 +27,14 @@
                 "minimum": 0,
                 "maximum": 63
             },
-            "intermediate1": {
+            "showIntermediate1": {
                 "title": "Show intermediate position 1 (experimental)",
                 "description": "Show a toggle button to allow moving to intermediate position 1",
                 "type": "boolean",
                 "required": false,
                 "default": false
             },
-            "intermediate2": {
+            "showIntermediate2": {
                 "title": "Show intermediate position 2 (experimental)",
                 "description": "Show a toggle button to allow moving to intermediate position 2",
                 "type": "boolean",
