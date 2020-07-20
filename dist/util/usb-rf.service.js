@@ -100,9 +100,15 @@ class USBRfService {
     convertPositionToCommeo(homekitPos) {
         return homekitPos > 0 ? COMMEO_MAX_POSITION - Math.min(Math.round(homekitPos / 100 * COMMEO_MAX_POSITION), COMMEO_MAX_POSITION) : COMMEO_MAX_POSITION;
     }
-    sendPosition(device, targetPos, cb) {
+    sendMovePosition(device, targetPos, cb) {
         const commeoTargetPos = this.convertPositionToCommeo(targetPos);
         this.writeSerial(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`, cb);
+    }
+    sendStop(device, cb) {
+        this.writeSerial(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>0</int><int>1</int><int>0</int></array></methodCall>`, cb);
+    }
+    sendMoveIntermediatePosition(device, pos, cb) {
+        this.writeSerial(`<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>${pos === 1 ? 3 : 5}</int><int>1</int><int>0</int></array></methodCall>`, cb);
     }
     requestUpdate(device, cb) {
         this.writeSerial(`<methodCall><methodName>selve.GW.device.getValues</methodName><array><int>${device}</int></array></methodCall>`, cb);

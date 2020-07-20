@@ -50,15 +50,15 @@ class SelveShutter implements AccessoryPlugin {
       throw new Error('Option "port" is required and needs to be set!');
     }
 
-    this.state = new CommeoState(this.device);
+    this.state = new CommeoState();
 
     // initialize services
     this.usbService = USBRfService.getInstance(port);
 
     this.shutterService = new hap.Service.WindowCovering(this.name);
     this.informationService = new hap.Service.AccessoryInformation();
-    this.switchService1 = new hap.Service.StatelessProgrammableSwitch(this.name);
-    this.switchService2 = new hap.Service.StatelessProgrammableSwitch(this.name);
+    this.switchService1 = new hap.Service.Switch('Position 1', '1');
+    this.switchService2 = new hap.Service.Switch('Position 2', '2');
 
     // setup shutter services
     this.shutterService
@@ -80,11 +80,11 @@ class SelveShutter implements AccessoryPlugin {
 
     // setup optional intermediate button services
     this.switchService1
-      .getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent)
+      .getCharacteristic(hap.Characteristic.On)
       .on(CharacteristicEventTypes.SET, this.setIntermediatePosition(1).bind(this))
 
     this.switchService2
-      .getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent)
+      .getCharacteristic(hap.Characteristic.On)
       .on(CharacteristicEventTypes.SET, this.setIntermediatePosition(2).bind(this))
 
     // setup info service
@@ -102,21 +102,18 @@ class SelveShutter implements AccessoryPlugin {
     // handle status updates
     this.usbService.eventEmitter.on(String(this.device), (newState: Partial<CommeoState>) => {
       log("New status", newState);
-      if (newState.CurrentPosition !== undefined) {
-        this.shutterService.getCharacteristic(hap.Characteristic.CurrentPosition).setValue(newState.CurrentPosition);
-      }
-      if (newState.PositionState !== undefined) {
-        this.shutterService.getCharacteristic(hap.Characteristic.PositionState).setValue(newState.PositionState);
-      }
-      if (newState.ObstructionDetected !== undefined) {
-        this.shutterService.getCharacteristic(hap.Characteristic.ObstructionDetected).setValue(newState.ObstructionDetected);
-      }
-      
-      // upgrade current state with new data
       this.state = {
         ...this.state,
         ...newState
-      }
+      };
+      this.shutterService.getCharacteristic(hap.Characteristic.CurrentPosition).updateValue(this.state.CurrentPosition);
+      this.shutterService.getCharacteristic(hap.Characteristic.PositionState).updateValue(this.state.PositionState);
+      this.shutterService.getCharacteristic(hap.Characteristic.ObstructionDetected).updateValue(this.state.ObstructionDetected);
+
+      this.switchService1.getCharacteristic(hap.Characteristic.On).updateValue(false);
+      this.switchService2.getCharacteristic(hap.Characteristic.On).updateValue(false);
+      
+      // upgrade current state with new data
     });
 
     // request current position
@@ -137,7 +134,7 @@ class SelveShutter implements AccessoryPlugin {
   private setTargetPosition = (newPosition: CharacteristicValue, cb: CharacteristicSetCallback) => {
     this.log("Set new target position to", newPosition);
     this.state.TargetPosition = Number(newPosition);
-    this.usbService.sendMovePosition(this.state.device, this.state.TargetPosition, cb)
+    this.usbService.sendMovePosition(this.device, this.state.TargetPosition, cb)
   };
   private setIntermediatePosition = (pos: 1 | 2) => (value: CharacteristicValue, cb: CharacteristicSetCallback) => {
     if (!value) {
@@ -145,7 +142,7 @@ class SelveShutter implements AccessoryPlugin {
     }
 
     this.log("Set to move to intermediate position", pos);
-    this.usbService.sendMoveIntermediatePosition(this.state.device, pos, cb);
+    this.usbService.sendMoveIntermediatePosition(this.device, pos, cb);
   };
 
   private getPositionState = (cb: CharacteristicGetCallback<HomebridgePositionState>) => cb(null, this.state.PositionState);

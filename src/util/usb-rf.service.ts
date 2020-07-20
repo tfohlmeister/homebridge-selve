@@ -123,6 +123,13 @@ export class USBRfService {
         );
     }
 
+    public sendStop(device: number, cb: ErrorValueCallback): void {
+        this.writeSerial(
+            `<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>0</int><int>1</int><int>0</int></array></methodCall>`,
+            cb
+        );
+    }
+
     public sendMoveIntermediatePosition(device: number, pos: 1 | 2, cb: ErrorValueCallback): void {
         this.writeSerial(
             `<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>${pos === 1 ? 3 : 5}</int><int>1</int><int>0</int></array></methodCall>`,
