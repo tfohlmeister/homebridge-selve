@@ -1,12 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class CommeoState {
-    constructor(device) {
+    constructor() {
         this.CurrentPosition = 100; // assume default open
         this.TargetPosition = 100; // assume default open
         this.PositionState = HomebridgePositionState.STOPPED;
         this.ObstructionDetected = false;
-        this.device = device;
     }
 }
 exports.CommeoState = CommeoState;
