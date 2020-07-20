@@ -1,3 +1,9 @@
+#### 1.1.0 (2020-07-20)
+
+##### Other Changes
+
+* tfohlmeister/homebridge-selve ([9786c780](https://github.com/tfohlmeister/homebridge-selve/commit/9786c780ac031888f95fe2b4edb76496d6556695))
+
 #### 1.0.2 (2020-05-02)
 
 ##### Bug Fixes
