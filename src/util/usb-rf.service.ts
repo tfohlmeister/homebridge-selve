@@ -1,10 +1,10 @@
 import events from 'events';
 import xmlParser from 'fast-xml-parser';
 import SerialPort from 'serialport';
-
 import { CommeoState, HomebridgePositionState } from '../data/commeo-state';
 import { ErrorValueCallback } from '../data/error-value.callback';
 import { SeqqueueTask } from '../data/seqqueue-task';
+
 
 const seqqueue = require('seq-queue');
 const queue = seqqueue.createQueue(100);
@@ -115,10 +115,17 @@ export class USBRfService {
         return homekitPos > 0 ? COMMEO_MAX_POSITION - Math.min(Math.round(homekitPos / 100 * COMMEO_MAX_POSITION), COMMEO_MAX_POSITION) : COMMEO_MAX_POSITION;
     }
 
-    public sendPosition(device: number, targetPos: number, cb: ErrorValueCallback): void {
+    public sendMovePosition(device: number, targetPos: number, cb: ErrorValueCallback): void {
         const commeoTargetPos = this.convertPositionToCommeo(targetPos);
         this.writeSerial(
             `<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>7</int><int>1</int><int>${commeoTargetPos}</int></array></methodCall>`,
+            cb
+        );
+    }
+
+    public sendMoveIntermediatePosition(device: number, pos: 1 | 2, cb: ErrorValueCallback): void {
+        this.writeSerial(
+            `<methodCall><methodName>selve.GW.command.device</methodName><array><int>${device}</int><int>${pos === 1 ? 3 : 5}</int><int>1</int><int>0</int></array></methodCall>`,
             cb
         );
     }
