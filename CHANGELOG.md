@@ -1,3 +1,9 @@
+#### 1.1.1 (2020-07-20)
+
+##### Other Changes
+
+* tfohlmeister/homebridge-selve ([9786c780](https://github.com/tfohlmeister/homebridge-selve/commit/9786c780ac031888f95fe2b4edb76496d6556695))
+
 #### 1.1.0 (2020-07-20)
 
 * (feature) Experimental support for intermediate positions
