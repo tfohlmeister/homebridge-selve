@@ -1,6 +1,5 @@
 import {
   AccessoryPlugin,
-
   CharacteristicEventTypes,
   CharacteristicGetCallback,
   CharacteristicSetCallback,
@@ -9,7 +8,7 @@ import {
   Logging,
   Service
 } from 'homebridge';
-import { CommeoState } from './data/commeo-state';
+import { CommeoState, HomebridgeStatusState } from './data/commeo-state';
 import { SelveAcessoryConfig } from './data/selve-accessory-config';
 import { USBRfService } from './util/usb-rf.service';
 
@@ -94,11 +93,11 @@ export class SelveShutter implements AccessoryPlugin {
         .updateValue(this.state.ObstructionDetected);
 
       // little hack to correctly show "opening" and "closing" status in Home app
-      if (this.state.PositionState === hap.Characteristic.PositionState.STOPPED) {
+      if (this.state.PositionState === HomebridgeStatusState.STOPPED) {
         this.shutterService.getCharacteristic(hap.Characteristic.TargetPosition)
           .updateValue(this.state.CurrentPosition);
         this.targetPosition = this.state.CurrentPosition;
-      } else if (this.state.PositionState === hap.Characteristic.PositionState.INCREASING) {
+      } else if (this.state.PositionState === HomebridgeStatusState.INCREASING) {
         this.shutterService.getCharacteristic(hap.Characteristic.TargetPosition)
           .updateValue(Math.min(100, this.state.CurrentPosition + 1));
       } else {

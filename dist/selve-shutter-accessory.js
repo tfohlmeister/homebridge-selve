@@ -51,25 +51,33 @@ class SelveShutter {
         this.usbService.eventEmitter.on(String(this.device), (newState) => {
             this.log.info(`[${this.name}] New state`, newState);
             this.state = newState;
-            this.shutterService.getCharacteristic(hap.Characteristic.CurrentPosition).updateValue(this.state.CurrentPosition);
-            this.shutterService.getCharacteristic(hap.Characteristic.PositionState).updateValue(this.state.PositionState);
-            this.shutterService.getCharacteristic(hap.Characteristic.ObstructionDetected).updateValue(this.state.ObstructionDetected);
+            this.shutterService.getCharacteristic(hap.Characteristic.CurrentPosition)
+                .updateValue(this.state.CurrentPosition);
+            this.shutterService.getCharacteristic(hap.Characteristic.PositionState)
+                .updateValue(this.state.PositionState);
+            this.shutterService.getCharacteristic(hap.Characteristic.ObstructionDetected)
+                .updateValue(this.state.ObstructionDetected);
             // little hack to correctly show "opening" and "closing" status in Home app
-            if (this.state.PositionState === hap.Characteristic.PositionState.STOPPED) {
-                this.shutterService.getCharacteristic(hap.Characteristic.TargetPosition).updateValue(this.state.CurrentPosition);
+            if (this.state.PositionState === commeo_state_1.HomebridgeStatusState.STOPPED) {
+                this.shutterService.getCharacteristic(hap.Characteristic.TargetPosition)
+                    .updateValue(this.state.CurrentPosition);
                 this.targetPosition = this.state.CurrentPosition;
             }
-            else if (this.state.PositionState === hap.Characteristic.PositionState.INCREASING) {
-                this.shutterService.getCharacteristic(hap.Characteristic.TargetPosition).updateValue(Math.min(100, this.state.CurrentPosition + 1));
+            else if (this.state.PositionState === commeo_state_1.HomebridgeStatusState.INCREASING) {
+                this.shutterService.getCharacteristic(hap.Characteristic.TargetPosition)
+                    .updateValue(Math.min(100, this.state.CurrentPosition + 1));
             }
             else {
-                this.shutterService.getCharacteristic(hap.Characteristic.TargetPosition).updateValue(Math.max(0, this.state.CurrentPosition - 1));
+                this.shutterService.getCharacteristic(hap.Characteristic.TargetPosition)
+                    .updateValue(Math.max(0, this.state.CurrentPosition - 1));
             }
-            this.switchService1.getCharacteristic(hap.Characteristic.On).updateValue(false);
-            this.switchService2.getCharacteristic(hap.Characteristic.On).updateValue(false);
-            // upgrade current state with new data
+            // always turn intermediate position switches off
+            this.switchService1.getCharacteristic(hap.Characteristic.On)
+                .updateValue(false);
+            this.switchService2.getCharacteristic(hap.Characteristic.On)
+                .updateValue(false);
         });
-        // request current position
+        // request current position on startup
         this.usbService.requestUpdate(this.device, err => !!err && log.error(err.message));
         this.services = [
             this.informationService,

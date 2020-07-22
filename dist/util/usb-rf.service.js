@@ -5,7 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const events_1 = __importDefault(require("events"));
 const fast_xml_parser_1 = __importDefault(require("fast-xml-parser"));
-const homebridge_1 = require("homebridge");
 const serialport_1 = __importDefault(require("serialport"));
 const commeo_state_1 = require("../data/commeo-state");
 const seqqueue = require('seq-queue');
@@ -50,11 +49,9 @@ class USBRfService {
         const payload = data.methodCall ? data.methodCall.array.int : data.methodResponse.array.int;
         const device = String(payload[0]);
         const stateStatus = payload[1];
-        const PositionState = 
-        // ToDo: These seem to be switched around, but this creates the correct status information in the Home app
-        stateStatus === commeo_state_1.CommeoStatusState.MOVING_UP ? homebridge_1.Characteristic.PositionState.INCREASING :
-            stateStatus === commeo_state_1.CommeoStatusState.MOVING_DOWN ? homebridge_1.Characteristic.PositionState.DECREASING :
-                homebridge_1.Characteristic.PositionState.STOPPED;
+        const PositionState = stateStatus === commeo_state_1.CommeoStatusState.MOVING_UP ? commeo_state_1.HomebridgeStatusState.INCREASING :
+            stateStatus === commeo_state_1.CommeoStatusState.MOVING_DOWN ? commeo_state_1.HomebridgeStatusState.DECREASING :
+                commeo_state_1.HomebridgeStatusState.STOPPED;
         const CurrentPosition = this.convertPositionToHomekit(payload[2]);
         const flags = String(payload[4]).split('');
         const ObstructionDetected = flags[0] === '1' || flags[1] === '1' || flags[2] === '1';

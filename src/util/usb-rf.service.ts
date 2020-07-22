@@ -1,8 +1,8 @@
 import events from 'events';
 import xmlParser from 'fast-xml-parser';
-import { Characteristic, Logging } from 'homebridge';
+import { Logging } from 'homebridge';
 import SerialPort from 'serialport';
-import { CommeoState, CommeoStatusState } from '../data/commeo-state';
+import { CommeoState, CommeoStatusState, HomebridgeStatusState } from '../data/commeo-state';
 import { ErrorValueCallback } from '../data/error-value.callback';
 import { SeqqueueTask } from '../data/seqqueue-task';
 
@@ -57,9 +57,9 @@ export class USBRfService {
         const device = String(payload[0]);
         const stateStatus: CommeoStatusState = payload[1];
         const PositionState =
-            stateStatus === CommeoStatusState.MOVING_UP ? Characteristic.PositionState.INCREASING :
-            stateStatus === CommeoStatusState.MOVING_DOWN ? Characteristic.PositionState.DECREASING :
-            Characteristic.PositionState.STOPPED;
+            stateStatus === CommeoStatusState.MOVING_UP ? HomebridgeStatusState.INCREASING :
+            stateStatus === CommeoStatusState.MOVING_DOWN ? HomebridgeStatusState.DECREASING :
+            HomebridgeStatusState.STOPPED;
         const CurrentPosition = this.convertPositionToHomekit(payload[2]);
         const flags = String(payload[4]).split('');
         const ObstructionDetected = flags[0] === '1' || flags[1] === '1' || flags[2] === '1';

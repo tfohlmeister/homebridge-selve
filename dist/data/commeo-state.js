@@ -1,14 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const hap_nodejs_1 = require("hap-nodejs");
 class CommeoState {
     constructor() {
         this.CurrentPosition = 100; // assume default open
-        this.PositionState = hap_nodejs_1.Characteristic.PositionState.STOPPED; // HomebridgeStatusState.STOPPED;
+        this.PositionState = HomebridgeStatusState.STOPPED;
         this.ObstructionDetected = false;
     }
 }
 exports.CommeoState = CommeoState;
+var HomebridgeStatusState;
+(function (HomebridgeStatusState) {
+    // based on Characteristic.PositionState
+    HomebridgeStatusState[HomebridgeStatusState["STOPPED"] = 2] = "STOPPED";
+    HomebridgeStatusState[HomebridgeStatusState["INCREASING"] = 1] = "INCREASING";
+    HomebridgeStatusState[HomebridgeStatusState["DECREASING"] = 0] = "DECREASING";
+})(HomebridgeStatusState = exports.HomebridgeStatusState || (exports.HomebridgeStatusState = {}));
 var CommeoStatusState;
 (function (CommeoStatusState) {
     CommeoStatusState[CommeoStatusState["UNKNOWN"] = 0] = "UNKNOWN";
