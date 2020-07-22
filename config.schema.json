@@ -1,46 +1,62 @@
 {
-    "pluginAlias": "Selve",
-    "pluginType": "accessory",
+    "pluginAlias": "selve",
+    "pluginType": "platform",
     "singular": false,
     "headerDisplay": "*Important:* For this plugin to work, you'll need to first pair the Selve USB-RF module manually with all shutters!",
     "schema": {
         "type": "object",
         "properties": {
             "name": {
-                "title": "Shutter Name",
-                "description": "Name of the shutter or room (e.g. Livingroom)",
+                "title": "Platform Name",
                 "type": "string",
+                "default": "Selve",
                 "required": true
             },
-            "port": {
+            "usbPort": {
                 "title": "USB Port",
                 "description": "Device path to Selve USB-RF module (e.g. /dev/tty.USB0)",
                 "type": "string",
                 "required": true
             },
-            "device": {
-                "title": "Device Number",
-                "description": "Device number set during pairing",
-                "type": "integer",
-                "required": true,
-                "default": 0,
-                "minimum": 0,
-                "maximum": 63
-            },
-            "showIntermediate1": {
-                "title": "Show intermediate position 1 (experimental)",
-                "description": "Show a toggle button to allow moving to intermediate position 1",
-                "type": "boolean",
-                "required": false,
-                "default": false
-            },
-            "showIntermediate2": {
-                "title": "Show intermediate position 2 (experimental)",
-                "description": "Show a toggle button to allow moving to intermediate position 2",
-                "type": "boolean",
-                "required": false,
-                "default": false
-            }
+
+            "shutters": {
+                "type": "array",
+                "items": {
+                    "title": "Shutter Config",
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "title": "Name",
+                            "description": "Name of the shutter or room (e.g. Livingroom)",
+                            "type": "string",
+                            "required": true
+                        },
+                        "device": {
+                            "title": "Number",
+                            "description": "Device number set during pairing",
+                            "type": "integer",
+                            "required": true,
+                            "default": 0,
+                            "minimum": 0,
+                            "maximum": 63
+                        },
+                        "showIntermediate1": {
+                            "title": "Show intermediate position 1 (experimental)",
+                            "description": "Show a toggle button to allow moving to intermediate position 1",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false
+                        },
+                        "showIntermediate2": {
+                            "title": "Show intermediate position 2 (experimental)",
+                            "description": "Show a toggle button to allow moving to intermediate position 2",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false
+                        }
+                    }
+                }
+            }     
         }
     },
     "form": null,

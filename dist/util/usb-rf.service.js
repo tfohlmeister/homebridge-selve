@@ -12,25 +12,16 @@ const queue = seqqueue.createQueue(100);
 const COMMEO_MAX_POSITION = 65535;
 const COMMEO_TIMEOUT = 10000;
 class USBRfService {
-    constructor(port) {
+    constructor(log, port) {
         this.baud = 115200;
         this.eventEmitter = new events_1.default.EventEmitter();
         this.eventString = '';
+        this.log = log;
         this.port = port;
         this.parser = new serialport_1.default.parsers.Delimiter({
             delimiter: '\r\n'
         });
         this.parser.on('data', this.handleData.bind(this));
-    }
-    static getInstance(port) {
-        if (this.instances.get(port) !== undefined) {
-            return this.instances.get(port);
-        }
-        else {
-            const instance = new USBRfService(port);
-            this.instances.set(port, instance);
-            return instance;
-        }
     }
     handleData(data) {
         this.eventString += data.toString();
@@ -40,20 +31,27 @@ class USBRfService {
         }
     }
     parseXML(input) {
+        var _a;
         const data = fast_xml_parser_1.default.parse(input);
         if (!data.methodCall && !data.methodResponse) {
-            console.log("Ignoring", data);
+            this.log.debug("Ignoring unknown format", data);
             return;
         }
         else if (data.methodResponse && data.methodResponse.fault) {
-            console.error('ERROR', data.methodResponse.fault);
+            this.log.error('ERROR', data.methodResponse.fault);
+            return;
+        }
+        else if ((data.methodCall && data.methodCall.methodName !== 'selve.GW.event.device') ||
+            (data.methodResponse && ((_a = data.methodResponse.array) === null || _a === void 0 ? void 0 : _a.string[0]) !== 'selve.GW.device.getValues')) {
+            this.log.debug("Ignoring unknown message", data);
             return;
         }
         const payload = data.methodCall ? data.methodCall.array.int : data.methodResponse.array.int;
         const device = String(payload[0]);
-        const PositionState = payload[1] === 1 ? commeo_state_1.HomebridgePositionState.STOPPED
-            : payload[1] === 2 ? commeo_state_1.HomebridgePositionState.DECREASING
-                : commeo_state_1.HomebridgePositionState.INCREASING;
+        const stateStatus = payload[1];
+        const PositionState = stateStatus === commeo_state_1.CommeoStatusState.MOVING_UP ? commeo_state_1.HomebridgeStatusState.INCREASING :
+            stateStatus === commeo_state_1.CommeoStatusState.MOVING_DOWN ? commeo_state_1.HomebridgeStatusState.DECREASING :
+                commeo_state_1.HomebridgeStatusState.STOPPED;
         const CurrentPosition = this.convertPositionToHomekit(payload[2]);
         const flags = String(payload[4]).split('');
         const ObstructionDetected = flags[0] === '1' || flags[1] === '1' || flags[2] === '1';
@@ -71,7 +69,7 @@ class USBRfService {
             baudRate: this.baud
         }, (err) => {
             if (err) {
-                console.error(err.message);
+                this.log.error(err.message);
                 this.activePort = undefined;
                 return cb(err);
             }
@@ -85,7 +83,9 @@ class USBRfService {
         queue.push((task) => {
             this.openPort((error) => {
                 if (error) {
-                    return cb(error);
+                    cb(error);
+                    task.done();
+                    return;
                 }
                 this.activePort.write(data, (err) => {
                     cb(err ? err : undefined);
@@ -115,5 +115,3 @@ class USBRfService {
     }
 }
 exports.USBRfService = USBRfService;
-/* Make sure we have singletons (each port opens only once) */
-USBRfService.instances = new Map();
