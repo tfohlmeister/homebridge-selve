@@ -21,7 +21,7 @@
   "engines": {
     "homebridge": ">=1.0.0"
   },
-  "main": "dist/index.js",
+  "main": "dist/selve-platform.js",
   "files": [
     "LICENSE",
     "dist",
@@ -40,10 +40,11 @@
     "generate-changelog": "^1.8.0",
     "homebridge": "^1.0.4",
     "nodemon": "^2.0.3",
+    "rimraf": "^3.0.2",
     "typescript": "^3.8.3"
   },
   "scripts": {
-    "clean": "rm -rf ./dist",
+    "clean": "rimraf ./dist",
     "watch-ts": "tsc -w",
     "build": "npm run clean && tsc",
     "debug": "npm run build && npm link && npm run watch",

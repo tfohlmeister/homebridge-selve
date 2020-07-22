@@ -1,7 +1,8 @@
 import events from 'events';
 import xmlParser from 'fast-xml-parser';
+import { Characteristic, Logging } from 'homebridge';
 import SerialPort from 'serialport';
-import { CommeoState, HomebridgePositionState } from '../data/commeo-state';
+import { CommeoState, CommeoStatusState } from '../data/commeo-state';
 import { ErrorValueCallback } from '../data/error-value.callback';
 import { SeqqueueTask } from '../data/seqqueue-task';
 
@@ -13,26 +14,16 @@ const COMMEO_MAX_POSITION = 65535;
 const COMMEO_TIMEOUT = 10000;
 
 export class USBRfService {
-    /* Make sure we have singletons (each port opens only once) */
-    static instances = new Map<string, USBRfService>();
-    static getInstance(port: string): USBRfService {
-        if (this.instances.get(port) !== undefined) {
-            return this.instances.get(port) as USBRfService;
-        } else {
-            const instance = new USBRfService(port);
-            this.instances.set(port, instance);
-            return instance;
-        }
-    }
-
     private port: string;
+    private log: Logging;
     private baud: number = 115200;
     private activePort: SerialPort | undefined;
     private parser: SerialPort.parsers.Delimiter;
     public eventEmitter = new events.EventEmitter();
     private eventString = '';
 
-    constructor(port: string) {
+    constructor(log: Logging, port: string) {
+        this.log = log;
         this.port = port;
 
         this.parser = new SerialPort.parsers.Delimiter({
@@ -52,21 +43,23 @@ export class USBRfService {
     private parseXML(input: string) {
         const data = xmlParser.parse(input);
         if (!data.methodCall && !data.methodResponse) {
-            console.log("Ignoring (unknown format)", data);
+            this.log.debug("Ignoring (unknown format)", data);
             return;
         } else if (data.methodResponse && data.methodResponse.fault) {
-            console.error('ERROR', data.methodResponse.fault);
+            this.log.error('ERROR', data.methodResponse.fault);
             return;
         } else if ((data.methodCall && data.methodCall.methodName !== 'selve.GW.event.device') ||
             (data.methodResponse && data.methodResponse.array?.string[0] !== 'selve.GW.device.getValues')) {
-            console.log("Ignoring (unknown message)", data.methodResponse.array.string[0]);
+            this.log.debug("Ignoring (unknown message)", data);
             return;
         }
         const payload = data.methodCall ? data.methodCall.array.int : data.methodResponse.array.int;
         const device = String(payload[0]);
-        const PositionState = payload[1] === 1 ? HomebridgePositionState.STOPPED
-            : payload[1] === 2 ? HomebridgePositionState.DECREASING
-            : HomebridgePositionState.INCREASING;
+        const stateStatus: CommeoStatusState = payload[1];
+        const PositionState =
+            stateStatus === CommeoStatusState.MOVING_UP ? Characteristic.PositionState.INCREASING :
+            stateStatus === CommeoStatusState.MOVING_DOWN ? Characteristic.PositionState.DECREASING :
+            Characteristic.PositionState.STOPPED;
         const CurrentPosition = this.convertPositionToHomekit(payload[2]);
         const flags = String(payload[4]).split('');
         const ObstructionDetected = flags[0] === '1' || flags[1] === '1' || flags[2] === '1';
@@ -75,7 +68,7 @@ export class USBRfService {
             CurrentPosition,
             PositionState,
             ObstructionDetected
-        } as Partial<CommeoState>);
+        } as CommeoState);
     }
 
     private openPort(cb: ErrorValueCallback) {
@@ -86,7 +79,7 @@ export class USBRfService {
             baudRate: this.baud
         }, (err) => {
             if (err) {
-                console.error(err.message);
+                this.log.error(err.message);
                 this.activePort = undefined;
                 return cb(err);
             } else {
@@ -100,7 +93,9 @@ export class USBRfService {
         queue.push((task: SeqqueueTask) => {
             this.openPort((error) => {
                 if (error) {
-                    return cb(error);
+                    cb(error);
+                    task.done();
+                    return;
                 }
                 this.activePort!.write(data, (err) => {
                     cb(err ? err : undefined);
