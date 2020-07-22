@@ -4,21 +4,27 @@ Exposes up to 64 roller shutters using a Selve USB-RF module paired with Selve C
 
 ## Setup
 1. Pair roller shutters and USB-RF Gateway using the official Selve tools
-2. Once paired, update your `config.json` and add as many "Selve" accessories as needed (see example below). Make sure you set the `device` to the same ActorID (0-63) used in the tools app, so that this plugin can handle actions and status updates correctly. 
+3. Once paired, use [Homebridge Config UI X](https://github.com/oznu/homebridge-config-ui-x) to setup your config and skip the following steps.
+2. Manual setup: Update your `config.json` and add "Selve" as a new platform. Make sure you set the `usbPort` to the corresponding path of the usb dongle on your system (typically something like `/dev/ttyUSB0` on Linux machines). Also make sure the system user running homebridge has read and write access to this device.
+3. Add as many `shutters` to the config as you have. Each shutter has a `name`, a `device` (the same ActorID (0-63) that was used in the tools app during pairing), and optional parameters to show virtual buttons for intermediate positions.
 
 **Example config.json:**
 
-    {
-      "accessories": [
+```
+"platforms": [
+  {
+    "name": "Selve",
+    "platform": "selve"
+    "usbPort": "/dev/ttyUSB0",
+    "shutters": [
         {
-          "accessory": "Selve",
-          "name": "Livingroom",
-          "port": "/dev/ttyUSB0",
-          "device": 1
+            "name": "Livingroom",
+            "device": 4
         }
-      ]
-    }
-
+    ],
+  }
+]
+```
 
 ### Add virtual buttons to move to intermediate positions (optional, experimental)
 
@@ -27,18 +33,21 @@ You can add up to two virtual buttons to move your shutters to predefined interm
 To add the buttons, simply add `showIntermediate1` and/or `showIntermediate2` to the config:
 
 ```
-{
-  "accessories": [
-    {
-      "accessory": "Selve",
-      "name": "Livingroom",
-      "port": "/dev/ttyUSB0",
-      "device": 1,
-      "showIntermediate1": true,
-      "showIntermediate2": true
-    }
-  ]
-}
+"platforms": [
+  {
+    "name": "Selve",
+    "platform": "selve"
+    "usbPort": "/dev/ttyUSB0",
+    "shutters": [
+        {
+            "name": "Livingroom",
+            "device": 4,
+            "showIntermediate1": true,
+            "showIntermediate2": true
+        }
+    ],
+  }
+]
 ```
 
 
