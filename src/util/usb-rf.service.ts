@@ -52,18 +52,21 @@ export class USBRfService {
     private parseXML(input: string) {
         const data = xmlParser.parse(input);
         if (!data.methodCall && !data.methodResponse) {
-            console.log("Ignoring", data);
+            console.log("Ignoring (unknown format)", data);
             return;
         } else if (data.methodResponse && data.methodResponse.fault) {
             console.error('ERROR', data.methodResponse.fault);
             return;
+        } else if ((data.methodCall && data.methodCall.methodName !== 'selve.GW.event.device') ||
+            (data.methodResponse && data.methodResponse.array?.string[0] !== 'selve.GW.device.getValues')) {
+            console.log("Ignoring (unknown message)", data.methodResponse.array.string[0]);
+            return;
         }
         const payload = data.methodCall ? data.methodCall.array.int : data.methodResponse.array.int;
-
         const device = String(payload[0]);
         const PositionState = payload[1] === 1 ? HomebridgePositionState.STOPPED
             : payload[1] === 2 ? HomebridgePositionState.DECREASING
-            : HomebridgePositionState.INCREASING
+            : HomebridgePositionState.INCREASING;
         const CurrentPosition = this.convertPositionToHomekit(payload[2]);
         const flags = String(payload[4]).split('');
         const ObstructionDetected = flags[0] === '1' || flags[1] === '1' || flags[2] === '1';
