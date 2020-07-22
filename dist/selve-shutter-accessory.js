@@ -51,25 +51,34 @@ class SelveShutter {
         this.usbService.eventEmitter.on(String(this.device), (newState) => {
             this.log.info(`[${this.name}] New state`, newState);
             this.state = newState;
-            this.shutterService.getCharacteristic(hap.Characteristic.CurrentPosition)
-                .updateValue(this.state.CurrentPosition);
             this.shutterService.getCharacteristic(hap.Characteristic.PositionState)
                 .updateValue(this.state.PositionState);
             this.shutterService.getCharacteristic(hap.Characteristic.ObstructionDetected)
                 .updateValue(this.state.ObstructionDetected);
-            // little hack to correctly show "opening" and "closing" status in Home app
-            if (this.state.PositionState === commeo_state_1.HomebridgeStatusState.STOPPED) {
+            const wasMovedFromExternal = // whether the device was operated from an external source (e.g. switch, other remote)
+             (this.state.PositionState === commeo_state_1.HomebridgeStatusState.INCREASING && this.targetPosition <= this.state.CurrentPosition) ||
+                (this.state.PositionState === commeo_state_1.HomebridgeStatusState.DECREASING && this.targetPosition >= this.state.CurrentPosition);
+            if (wasMovedFromExternal) {
+                // little hack to correctly show "opening" and "closing" status in Home app
+                if (this.state.PositionState === commeo_state_1.HomebridgeStatusState.INCREASING) {
+                    this.shutterService.getCharacteristic(hap.Characteristic.CurrentPosition)
+                        .updateValue(Math.max(0, this.state.CurrentPosition - 1));
+                }
+                else {
+                    this.shutterService.getCharacteristic(hap.Characteristic.CurrentPosition)
+                        .updateValue(Math.min(100, this.state.CurrentPosition + 1));
+                }
                 this.shutterService.getCharacteristic(hap.Characteristic.TargetPosition)
                     .updateValue(this.state.CurrentPosition);
-                this.targetPosition = this.state.CurrentPosition;
-            }
-            else if (this.state.PositionState === commeo_state_1.HomebridgeStatusState.INCREASING) {
-                this.shutterService.getCharacteristic(hap.Characteristic.TargetPosition)
-                    .updateValue(Math.min(100, this.state.CurrentPosition + 1));
             }
             else {
+                this.shutterService.getCharacteristic(hap.Characteristic.CurrentPosition)
+                    .updateValue(this.state.CurrentPosition);
+            }
+            if (this.state.PositionState === commeo_state_1.HomebridgeStatusState.STOPPED) {
+                this.targetPosition = this.state.CurrentPosition;
                 this.shutterService.getCharacteristic(hap.Characteristic.TargetPosition)
-                    .updateValue(Math.max(0, this.state.CurrentPosition - 1));
+                    .updateValue(this.state.CurrentPosition);
             }
             // always turn intermediate position switches off
             this.switchService1.getCharacteristic(hap.Characteristic.On)

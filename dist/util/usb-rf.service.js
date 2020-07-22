@@ -34,7 +34,7 @@ class USBRfService {
         var _a;
         const data = fast_xml_parser_1.default.parse(input);
         if (!data.methodCall && !data.methodResponse) {
-            this.log.debug("Ignoring (unknown format)", data);
+            this.log.debug("Ignoring unknown format", data);
             return;
         }
         else if (data.methodResponse && data.methodResponse.fault) {
@@ -43,7 +43,7 @@ class USBRfService {
         }
         else if ((data.methodCall && data.methodCall.methodName !== 'selve.GW.event.device') ||
             (data.methodResponse && ((_a = data.methodResponse.array) === null || _a === void 0 ? void 0 : _a.string[0]) !== 'selve.GW.device.getValues')) {
-            this.log.debug("Ignoring (unknown message)", data);
+            this.log.debug("Ignoring unknown message", data);
             return;
         }
         const payload = data.methodCall ? data.methodCall.array.int : data.methodResponse.array.int;
