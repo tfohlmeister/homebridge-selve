@@ -41,15 +41,22 @@
                             "maximum": 63
                         },
                         "showIntermediate1": {
-                            "title": "Show intermediate position 1 (experimental)",
+                            "title": "Show position 1 button",
                             "description": "Show a toggle button to allow moving to intermediate position 1",
                             "type": "boolean",
                             "required": false,
                             "default": false
                         },
                         "showIntermediate2": {
-                            "title": "Show intermediate position 2 (experimental)",
+                            "title": "Show position 2 button",
                             "description": "Show a toggle button to allow moving to intermediate position 2",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false
+                        },
+                        "showStop": {
+                            "title": "Show stop button",
+                            "description": "Show a toggle button to stop the current movement",
                             "type": "boolean",
                             "required": false,
                             "default": false

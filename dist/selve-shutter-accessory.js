@@ -12,8 +12,9 @@ class SelveShutter {
         // initialize services
         this.shutterService = new hap.Service.WindowCovering(this.name);
         this.informationService = new hap.Service.AccessoryInformation();
-        this.switchService1 = new hap.Service.Switch('Position 1', '1');
-        this.switchService2 = new hap.Service.Switch('Position 2', '2');
+        this.intermediate1SwitchService = new hap.Service.Switch(`${this.name} Position 1`, '1');
+        this.intermediate2SwitchService = new hap.Service.Switch(`${this.name} Position 2`, '2');
+        this.stopSwitchService = new hap.Service.Switch(`${this.name} Stop`, '2');
         // setup shutter services
         this.shutterService.getCharacteristic(hap.Characteristic.CurrentPosition)
             .on("get" /* GET */, (cb) => cb(null, this.state.CurrentPosition));
@@ -29,19 +30,41 @@ class SelveShutter {
         this.shutterService.getCharacteristic(hap.Characteristic.ObstructionDetected)
             .on("get" /* GET */, (cb) => cb(null, this.state.ObstructionDetected));
         // setup optional intermediate button services
-        this.switchService1.getCharacteristic(hap.Characteristic.On)
+        this.intermediate1SwitchService.getCharacteristic(hap.Characteristic.On)
             .on("set" /* SET */, (value, cb) => {
             if (!value)
                 return cb();
             this.log.info(`[${this.name}] Set to move to intermediate position 1`);
             this.usbService.sendMoveIntermediatePosition(this.device, 1, cb);
+            // toggle off button after some cooldown
+            setTimeout(() => {
+                this.intermediate1SwitchService.getCharacteristic(hap.Characteristic.On)
+                    .updateValue(false);
+            }, 500);
         });
-        this.switchService2.getCharacteristic(hap.Characteristic.On)
+        this.intermediate2SwitchService.getCharacteristic(hap.Characteristic.On)
             .on("set" /* SET */, (value, cb) => {
             if (!value)
                 return cb();
             this.log.info(`[${this.name}] Set to move to intermediate position 2`);
             this.usbService.sendMoveIntermediatePosition(this.device, 2, cb);
+            // toggle off button after some cooldown
+            setTimeout(() => {
+                this.intermediate2SwitchService.getCharacteristic(hap.Characteristic.On)
+                    .updateValue(false);
+            }, 500);
+        });
+        this.stopSwitchService.getCharacteristic(hap.Characteristic.On)
+            .on("set" /* SET */, (value, cb) => {
+            if (!value)
+                return cb();
+            this.log.info(`[${this.name}] Set to stop`);
+            this.usbService.sendStop(this.device, cb);
+            // toggle off button after some cooldown
+            setTimeout(() => {
+                this.stopSwitchService.getCharacteristic(hap.Characteristic.On)
+                    .updateValue(false);
+            }, 500);
         });
         // setup info service
         this.informationService = new hap.Service.AccessoryInformation()
@@ -80,19 +103,15 @@ class SelveShutter {
                 this.shutterService.getCharacteristic(hap.Characteristic.TargetPosition)
                     .updateValue(this.state.CurrentPosition);
             }
-            // always turn intermediate position switches off
-            this.switchService1.getCharacteristic(hap.Characteristic.On)
-                .updateValue(false);
-            this.switchService2.getCharacteristic(hap.Characteristic.On)
-                .updateValue(false);
         });
         // request current position on startup
         this.usbService.requestUpdate(this.device, err => !!err && log.error(err.message));
         this.services = [
             this.informationService,
             this.shutterService,
-            config.showIntermediate1 ? this.switchService1 : null,
-            config.showIntermediate2 ? this.switchService2 : null
+            config.showIntermediate1 ? this.intermediate1SwitchService : null,
+            config.showIntermediate2 ? this.intermediate2SwitchService : null,
+            config.showStop ? this.stopSwitchService : null
         ].filter(s => !!s);
         log.info("Selve shutter '%s' created!", this.name);
     }
