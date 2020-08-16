@@ -1,3 +1,9 @@
+#### 2.1.0 (2020-08-16)
+
+##### Other Changes
+
+* tfohlmeister/homebridge-selve ([12d714bd](https://github.com/tfohlmeister/homebridge-selve/commit/12d714bd689e1105bc0158cd2319268d3f7b5f32))
+
 #### 2.0.0 (2020-07-22)
 
 Breaking changes: This plugin is now a platform plugin. Please check README on how to update your config or use [Homebridge Config UI X](https://github.com/oznu/homebridge-config-ui-x).
