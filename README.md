@@ -26,9 +26,9 @@ Exposes up to 64 roller shutters using a Selve USB-RF module paired with Selve C
 ]
 ```
 
-### Add virtual buttons to move to intermediate positions (optional, experimental)
+### Add virtual buttons to move to saved intermediate positions (optional)
 
-You can add up to two virtual buttons to move your shutters to predefined intermediate positions (position 1 or 2). At the moment this plugin can't detect whether the current position is an intermediate position or not, so it simply turns off the virtual button immediately after turning it on and triggering the command. *This is still experimental, feedback is welcome!*
+You can add up to two virtual buttons to move your shutters to predefined, saved intermediate positions (position 1 or 2). At the moment this plugin can't detect whether the current position is an intermediate position or not, so it simply turns off the virtual button immediately after turning it on and triggering the command.
 
 To add the buttons, simply add `showIntermediate1` and/or `showIntermediate2` to the config:
 
@@ -43,13 +43,22 @@ To add the buttons, simply add `showIntermediate1` and/or `showIntermediate2` to
             "name": "Livingroom",
             "device": 4,
             "showIntermediate1": true,
-            "showIntermediate2": true
+            "showIntermediate2": true,
         }
     ],
   }
 ]
 ```
 
+### Add a virtual button to stop any movement (optional)
+
+You can add another virtual button for stopping any current movement. Simply add `showStop` to any shutter in your config, in the same style as above.
+```
+...
+"showStop": true,
+...
+
+```
 
 
 ## Plugin Development
