@@ -43,7 +43,7 @@ export class SelveShutter implements AccessoryPlugin {
     this.informationService = new hap.Service.AccessoryInformation();
     this.intermediate1SwitchService = new hap.Service.Switch(`${this.name} Position 1`, '1');
     this.intermediate2SwitchService = new hap.Service.Switch(`${this.name} Position 2`, '2');
-    this.stopSwitchService = new hap.Service.Switch(`${this.name} Stop`, '2');
+    this.stopSwitchService = new hap.Service.Switch(`${this.name} Stop`, '3');
 
     // setup shutter services
     this.shutterService.getCharacteristic(hap.Characteristic.CurrentPosition)
