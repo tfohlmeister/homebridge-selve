@@ -1,3 +1,9 @@
+#### 2.2.0 (2020-10-28)
+
+##### New Features
+
+*  Node 14 support ([3f12e88c](https://github.com/tfohlmeister/homebridge-selve/commit/3f12e88ce826c292b61dde6ec10011805c36b333))
+
 #### 2.1.2 (2020-09-03)
 
 #### 2.1.1 (2020-08-16)
