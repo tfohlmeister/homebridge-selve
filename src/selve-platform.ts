@@ -1,5 +1,4 @@
 import { AccessoryPlugin, API, HAP, Logging, StaticPlatformPlugin } from "homebridge";
-import { isNumber } from "util";
 import { SelvePlatformConfig } from "./data/selve-platform-config";
 import { SelveShutter } from "./selve-shutter-accessory";
 import { USBRfService } from "./util/usb-rf.service";
@@ -38,7 +37,7 @@ class SelvePlatform implements StaticPlatformPlugin {
         if (!config.name) {
             this.log.error("Shutter name not set!");
             return null;
-        } else if(!isNumber(config.device)) {
+        } else if(typeof config.device !== 'number') {
             this.log.error("Shutter device undefined or not a number!");
             return null;
         }
