@@ -43,14 +43,14 @@ export class USBRfService {
     private parseXML(input: string) {
         const data = xmlParser.parse(input);
         if (!data.methodCall && !data.methodResponse) {
-            this.log.debug("Ignoring unknown format", data);
+            this.log.debug("Ignoring unknown format", JSON.stringify(data));
             return;
         } else if (data.methodResponse && data.methodResponse.fault) {
             this.log.error('ERROR', data.methodResponse.fault);
             return;
         } else if ((data.methodCall && data.methodCall.methodName !== 'selve.GW.event.device') ||
             (data.methodResponse && data.methodResponse.array?.string[0] !== 'selve.GW.device.getValues')) {
-            this.log.debug("Ignoring unknown message", data);
+            this.log.debug("Ignoring unknown message", JSON.stringify(data));
             return;
         }
         const payload = data.methodCall ? data.methodCall.array.int : data.methodResponse.array.int;
@@ -99,7 +99,7 @@ export class USBRfService {
                 }
                 this.activePort!.write(data, (err) => {
                     cb(err ? err : undefined);
-                    setTimeout(task.done, 250); // give device time to settle
+                    setTimeout(task.done, 500); // give usb sender time to handle command
                 });
             });
         }, () => cb(new Error('Timeout')), COMMEO_TIMEOUT);
