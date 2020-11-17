@@ -1,3 +1,9 @@
+#### 2.2.1 (2020-11-17)
+
+##### Bug Fixes
+
+*  Give more time fire multiple commands ([2ba23f68](https://github.com/tfohlmeister/homebridge-selve/commit/2ba23f68b210373c9b276a6a7d53a55f267d6195))
+
 #### 2.2.0 (2020-10-28)
 
 ##### New Features
