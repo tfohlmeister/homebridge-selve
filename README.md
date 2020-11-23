@@ -10,18 +10,18 @@ Exposes up to 64 roller shutters using a Selve USB-RF module paired with Selve C
 
 **Example config.json:**
 
-```
+```JSON
 "platforms": [
   {
     "name": "Selve",
-    "platform": "selve"
+    "platform": "selve",
     "usbPort": "/dev/ttyUSB0",
     "shutters": [
         {
             "name": "Livingroom",
             "device": 4
         }
-    ],
+    ]
   }
 ]
 ```
@@ -32,20 +32,20 @@ You can add up to two virtual buttons to move your shutters to predefined, saved
 
 To add the buttons, simply add `showIntermediate1` and/or `showIntermediate2` to the config:
 
-```
+```JSON
 "platforms": [
   {
     "name": "Selve",
-    "platform": "selve"
+    "platform": "selve",
     "usbPort": "/dev/ttyUSB0",
     "shutters": [
         {
             "name": "Livingroom",
             "device": 4,
             "showIntermediate1": true,
-            "showIntermediate2": true,
+            "showIntermediate2": true
         }
-    ],
+    ]
   }
 ]
 ```
@@ -53,7 +53,7 @@ To add the buttons, simply add `showIntermediate1` and/or `showIntermediate2` to
 ### Add a virtual button to stop any movement (optional)
 
 You can add another virtual button for stopping any current movement. Simply add `showStop` to any shutter in your config, in the same style as above.
-```
+```JSON
 ...
 "showStop": true,
 ...
