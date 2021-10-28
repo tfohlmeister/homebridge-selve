@@ -1,8 +1,8 @@
-import { AccessoryConfig } from 'homebridge';
+import { AccessoryConfig } from "homebridge";
 
 export interface SelveAcessoryConfig extends AccessoryConfig {
-    device?: number,
-    showIntermediate1?: boolean,
-    showIntermediate2?: boolean,
-    showStop?: boolean;
+  device?: number;
+  showIntermediate1?: boolean;
+  showIntermediate2?: boolean;
+  showStop?: boolean;
 }
