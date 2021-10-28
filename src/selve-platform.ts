@@ -4,12 +4,12 @@ import {
   HAP,
   Logging,
   StaticPlatformPlugin,
-} from "homebridge";
-import { SelvePlatformConfig } from "./data/selve-platform-config";
-import { SelveShutter } from "./selve-shutter-accessory";
-import { USBRfService } from "./util/usb-rf.service";
+} from 'homebridge';
+import { SelvePlatformConfig } from './data/selve-platform-config';
+import { SelveShutter } from './selve-shutter-accessory';
+import { USBRfService } from './util/usb-rf.service';
 
-const PLATFORM_NAME = "selve";
+const PLATFORM_NAME = 'selve';
 
 let hap: HAP;
 
@@ -24,27 +24,27 @@ class SelvePlatform implements StaticPlatformPlugin {
   private readonly usbService: USBRfService;
   private readonly shutters: Array<SelveShutter>;
 
-  constructor(log: Logging, config: SelvePlatformConfig, api: API) {
+  constructor(log: Logging, config: SelvePlatformConfig) {
     this.log = log;
 
     if (!config.usbPort) {
-      throw Error("Config 'usbPort' is required and can't be undefined!");
+      throw Error('Config \'usbPort\' is required and can\'t be undefined!');
     }
 
     this.usbService = new USBRfService(log, config.usbPort);
 
     const shutterConfigs = config.shutters || [];
     if (shutterConfigs.length === 0) {
-      this.log.warn("No shutter configs defined!");
+      this.log.warn('No shutter configs defined!');
     }
 
     this.shutters = shutterConfigs
       .map((config) => {
         if (!config.name) {
-          this.log.error("Shutter name not set!");
+          this.log.error('Shutter name not set!');
           return null;
-        } else if (typeof config.device !== "number") {
-          this.log.error("Shutter device undefined or not a number!");
+        } else if (typeof config.device !== 'number') {
+          this.log.error('Shutter device undefined or not a number!');
           return null;
         }
         return new SelveShutter(hap, log, config, this.usbService);

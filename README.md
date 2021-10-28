@@ -66,5 +66,5 @@ You can add another virtual button for stopping any current movement. Simply add
 You can run in watch mode to automatically transpile code as you write it:
 
 ```sh
-  npm run debug
+  npm run watch
 ```

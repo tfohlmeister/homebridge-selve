@@ -7,10 +7,10 @@ import {
   HAP,
   Logging,
   Service,
-} from "homebridge";
-import { CommeoState, HomebridgeStatusState } from "./data/commeo-state";
-import { SelveAcessoryConfig } from "./data/selve-accessory-config";
-import { USBRfService } from "./util/usb-rf.service";
+} from 'homebridge';
+import { CommeoState, HomebridgeStatusState } from './data/commeo-state';
+import { SelveAcessoryConfig } from './data/selve-accessory-config';
+import { USBRfService } from './util/usb-rf.service';
 
 export class SelveShutter implements AccessoryPlugin {
   private readonly log: Logging;
@@ -31,7 +31,7 @@ export class SelveShutter implements AccessoryPlugin {
     hap: HAP,
     log: Logging,
     config: SelveAcessoryConfig,
-    usbService: USBRfService
+    usbService: USBRfService,
   ) {
     this.log = log;
     this.name = config.name;
@@ -45,51 +45,51 @@ export class SelveShutter implements AccessoryPlugin {
     this.informationService = new hap.Service.AccessoryInformation();
     this.intermediate1SwitchService = new hap.Service.Switch(
       `${this.name} Position 1`,
-      "1"
+      '1',
     );
     this.intermediate2SwitchService = new hap.Service.Switch(
       `${this.name} Position 2`,
-      "2"
+      '2',
     );
-    this.stopSwitchService = new hap.Service.Switch(`${this.name} Stop`, "3");
+    this.stopSwitchService = new hap.Service.Switch(`${this.name} Stop`, '3');
 
     // setup shutter services
     this.shutterService
       .getCharacteristic(hap.Characteristic.CurrentPosition)
       .on(CharacteristicEventTypes.GET, (cb: CharacteristicGetCallback) =>
-        cb(null, this.state.CurrentPosition)
+        cb(null, this.state.CurrentPosition),
       );
 
     this.shutterService
       .getCharacteristic(hap.Characteristic.TargetPosition)
       .on(CharacteristicEventTypes.GET, (cb: CharacteristicGetCallback) =>
-        cb(null, this.targetPosition)
+        cb(null, this.targetPosition),
       )
       .on(
         CharacteristicEventTypes.SET,
         (newPosition: CharacteristicValue, cb: CharacteristicSetCallback) => {
           this.log.info(
-            `[${this.name}] Set new target position to ${newPosition}`
+            `[${this.name}] Set new target position to ${newPosition}`,
           );
           this.targetPosition = Number(newPosition);
           this.usbService.sendMovePosition(
             this.device,
             this.targetPosition,
-            cb
+            cb,
           );
-        }
+        },
       );
 
     this.shutterService
       .getCharacteristic(hap.Characteristic.PositionState)
       .on(CharacteristicEventTypes.GET, (cb: CharacteristicGetCallback) =>
-        cb(null, this.state.PositionState)
+        cb(null, this.state.PositionState),
       );
 
     this.shutterService
       .getCharacteristic(hap.Characteristic.ObstructionDetected)
       .on(CharacteristicEventTypes.GET, (cb: CharacteristicGetCallback) =>
-        cb(null, this.state.ObstructionDetected)
+        cb(null, this.state.ObstructionDetected),
       );
 
     // setup optional intermediate button services
@@ -98,9 +98,11 @@ export class SelveShutter implements AccessoryPlugin {
       .on(
         CharacteristicEventTypes.SET,
         (value: CharacteristicValue, cb: CharacteristicSetCallback) => {
-          if (!value) return cb();
+          if (!value) {
+            return cb();
+          }
           this.log.info(
-            `[${this.name}] Set to move to intermediate position 1`
+            `[${this.name}] Set to move to intermediate position 1`,
           );
           this.usbService.sendMoveIntermediatePosition(this.device, 1, cb);
 
@@ -110,7 +112,7 @@ export class SelveShutter implements AccessoryPlugin {
               .getCharacteristic(hap.Characteristic.On)
               .updateValue(false);
           }, 500);
-        }
+        },
       );
 
     this.intermediate2SwitchService
@@ -118,9 +120,11 @@ export class SelveShutter implements AccessoryPlugin {
       .on(
         CharacteristicEventTypes.SET,
         (value: CharacteristicValue, cb: CharacteristicSetCallback) => {
-          if (!value) return cb();
+          if (!value) {
+            return cb();
+          }
           this.log.info(
-            `[${this.name}] Set to move to intermediate position 2`
+            `[${this.name}] Set to move to intermediate position 2`,
           );
           this.usbService.sendMoveIntermediatePosition(this.device, 2, cb);
 
@@ -130,7 +134,7 @@ export class SelveShutter implements AccessoryPlugin {
               .getCharacteristic(hap.Characteristic.On)
               .updateValue(false);
           }, 500);
-        }
+        },
       );
 
     this.stopSwitchService
@@ -138,7 +142,9 @@ export class SelveShutter implements AccessoryPlugin {
       .on(
         CharacteristicEventTypes.SET,
         (value: CharacteristicValue, cb: CharacteristicSetCallback) => {
-          if (!value) return cb();
+          if (!value) {
+            return cb();
+          }
           this.log.info(`[${this.name}] Set to stop`);
           this.usbService.sendStop(this.device, cb);
 
@@ -148,13 +154,13 @@ export class SelveShutter implements AccessoryPlugin {
               .getCharacteristic(hap.Characteristic.On)
               .updateValue(false);
           }, 500);
-        }
+        },
       );
 
     // setup info service
     this.informationService = new hap.Service.AccessoryInformation()
-      .setCharacteristic(hap.Characteristic.Manufacturer, "Selve")
-      .setCharacteristic(hap.Characteristic.Model, "Selve");
+      .setCharacteristic(hap.Characteristic.Manufacturer, 'Selve')
+      .setCharacteristic(hap.Characteristic.Model, 'Selve');
 
     // handle status updates
     this.usbService.eventEmitter.on(
@@ -201,13 +207,13 @@ export class SelveShutter implements AccessoryPlugin {
             .getCharacteristic(hap.Characteristic.TargetPosition)
             .updateValue(this.state.CurrentPosition);
         }
-      }
+      },
     );
 
     // request current position on startup
     this.usbService.requestUpdate(
       this.device,
-      (err) => !!err && log.error(err.message)
+      (err) => !!err && log.error(err.message),
     );
 
     this.services = [
@@ -218,7 +224,7 @@ export class SelveShutter implements AccessoryPlugin {
       config.showStop ? this.stopSwitchService : null,
     ].filter((s) => !!s) as Array<Service>;
 
-    log.info("Selve shutter '%s' created!", this.name);
+    log.info('Selve shutter \'%s\' created!', this.name);
   }
 
   public getServices(): Array<Service> {

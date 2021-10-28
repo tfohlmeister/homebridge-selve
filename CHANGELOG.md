@@ -1,3 +1,10 @@
+#### 2.2.2 (2021-10-28)
+
+##### Chores
+
+*  Cleanup ([962b3f1d](https://github.com/tfohlmeister/homebridge-selve/commit/962b3f1d990d78ca54424b306c1d23c4af1e272f))
+*  Updated to node 14 ([d3264a7d](https://github.com/tfohlmeister/homebridge-selve/commit/d3264a7dcefe684c024bb2fc86c212eba932b98c))
+
 #### 2.2.1 (2020-11-17)
 
 ##### Bug Fixes
