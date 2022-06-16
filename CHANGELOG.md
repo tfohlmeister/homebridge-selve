@@ -1,3 +1,11 @@
+#### 2.2.3 (2022-06-16)
+
+##### Chores
+
+*  Dependency update ([66f1c7d4](https://github.com/tfohlmeister/homebridge-selve/commit/66f1c7d4c337b698b3bed6b1e46f0bbc909dcdc1))
+*  Cleanup ([962b3f1d](https://github.com/tfohlmeister/homebridge-selve/commit/962b3f1d990d78ca54424b306c1d23c4af1e272f))
+*  Updated to node 14 ([d3264a7d](https://github.com/tfohlmeister/homebridge-selve/commit/d3264a7dcefe684c024bb2fc86c212eba932b98c))
+
 #### 2.2.2 (2021-10-28)
 
 ##### Chores
