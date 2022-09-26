@@ -30,7 +30,7 @@ export class SelveShutter implements AccessoryPlugin {
   constructor(hap: HAP, log: Logging, config: SelveAcessoryConfig, usbService: USBRfService) {
     this.log = log;
     this.name = config.name;
-    this.device = config.device!;
+    this.device = config.device;
     this.usbService = usbService;
 
     this.state = new CommeoState();
