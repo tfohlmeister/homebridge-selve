@@ -1,3 +1,16 @@
+#### 2.2.4 (2022-09-26)
+
+##### Chores
+
+*  Update eslint ([3ddef0e5](https://github.com/tfohlmeister/homebridge-selve/commit/3ddef0e5a9b18d032149a9363f2e1c104feb3b5c))
+*  Dependency update ([66f1c7d4](https://github.com/tfohlmeister/homebridge-selve/commit/66f1c7d4c337b698b3bed6b1e46f0bbc909dcdc1))
+*  Cleanup ([962b3f1d](https://github.com/tfohlmeister/homebridge-selve/commit/962b3f1d990d78ca54424b306c1d23c4af1e272f))
+*  Updated to node 14 ([d3264a7d](https://github.com/tfohlmeister/homebridge-selve/commit/d3264a7dcefe684c024bb2fc86c212eba932b98c))
+
+##### New Features
+
+*  Added serial number to info service. Closes [#17](https://github.com/tfohlmeister/homebridge-selve/pull/17) ([8c35abbc](https://github.com/tfohlmeister/homebridge-selve/commit/8c35abbc02e48fdc1b41870a98631c3591cedf36))
+
 #### 2.2.3 (2022-06-16)
 
 ##### Chores
