@@ -1,6 +1,10 @@
 # Selve Roller Shutter Accessory
-
 Exposes up to 64 roller shutters using a Selve USB-RF module paired with Selve Commeo receivers.
+
+
+## !!! Depcrecated !!!
+Since I moved on to [HomeAssistant](https://home-assistant.io) I am no longer using this plugin myself and thus deprecating it. Feel free to fork it if you wish. I will leave the repo and npm package available so unless there is a breaking change in the future, this plugin should keep on working as it has been.
+
 
 ## Setup
 1. Pair roller shutters and USB-RF Gateway using the official Selve tools
