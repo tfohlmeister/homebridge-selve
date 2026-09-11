@@ -13,6 +13,9 @@ jobs:
       matrix:
         node: [22.x, 24.x]
         homebridge: [1.8.0, 2.4.0]
+        include:
+          - node: 26.x
+            homebridge: 2.4.0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
