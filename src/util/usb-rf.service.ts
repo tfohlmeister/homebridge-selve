@@ -161,7 +161,6 @@ export class USBRfService {
       return;
     }
     connection.buffer += data.toString();
-    // A serial read can contain part of a frame or several complete frames.
     let end: RegExpExecArray | null;
     while ((end = /<\/method(?:Response|Call)>/.exec(connection.buffer))) {
       const length = end.index + end[0].length;

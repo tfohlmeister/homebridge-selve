@@ -33,7 +33,6 @@ export class SelveShutter implements AccessoryPlugin {
 
     this.state = new CommeoState();
 
-    // initialize services
     this.shutterService = new hap.Service.WindowCovering(this.name);
     this.informationService = new hap.Service.AccessoryInformation();
     this.intermediate1SwitchService = new hap.Service.Switch(`${this.name} Position 1`, "1");
@@ -51,7 +50,6 @@ export class SelveShutter implements AccessoryPlugin {
         new hap.HapStatusError(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE));
     });
 
-    // setup shutter services
     this.shutterService
       .getCharacteristic(hap.Characteristic.CurrentPosition)
       .onGet(() => { requireState(); return this.state.CurrentPosition; });
@@ -79,7 +77,6 @@ export class SelveShutter implements AccessoryPlugin {
       .getCharacteristic(hap.Characteristic.ObstructionDetected)
       .onGet(() => { requireState(); return this.state.ObstructionDetected; });
 
-    // setup optional intermediate button services
     this.intermediate1SwitchService
       .getCharacteristic(hap.Characteristic.On)
       .onSet(async (value: CharacteristicValue) => {
@@ -89,7 +86,6 @@ export class SelveShutter implements AccessoryPlugin {
         this.log.info(`[${this.name}] Set to move to intermediate position 1`);
         await this.usbService.sendMoveIntermediatePosition(this.device, 1);
 
-        // toggle off button after some cooldown
         setTimeout(() => {
           this.intermediate1SwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
         }, 500);
@@ -104,7 +100,6 @@ export class SelveShutter implements AccessoryPlugin {
         this.log.info(`[${this.name}] Set to move to intermediate position 2`);
         await this.usbService.sendMoveIntermediatePosition(this.device, 2);
 
-        // toggle off button after some cooldown
         setTimeout(() => {
           this.intermediate2SwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
         }, 500);
@@ -119,19 +114,16 @@ export class SelveShutter implements AccessoryPlugin {
         this.log.info(`[${this.name}] Set to stop`);
         await this.usbService.sendStop(this.device);
 
-        // toggle off button after some cooldown
         setTimeout(() => {
           this.stopSwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
         }, 500);
       });
 
-    // setup info service
     this.informationService = new hap.Service.AccessoryInformation()
       .setCharacteristic(hap.Characteristic.Manufacturer, "Selve")
       .setCharacteristic(hap.Characteristic.Model, "Selve")
       .setCharacteristic(hap.Characteristic.SerialNumber, this.name);
 
-    // handle status updates
     this.usbService.eventEmitter.on(String(this.device), (newState: CommeoState) => {
       this.log.info(`[${this.name}] New state`, newState);
       this.state = newState;
@@ -142,14 +134,14 @@ export class SelveShutter implements AccessoryPlugin {
         .getCharacteristic(hap.Characteristic.ObstructionDetected)
         .updateValue(this.state.ObstructionDetected);
 
-      const wasMovedFromExternal = // whether the device was operated from an external source (e.g. switch, other remote)
+      const wasMovedFromExternal =
         (this.state.PositionState === HomebridgeStatusState.INCREASING &&
           this.targetPosition <= this.state.CurrentPosition) ||
         (this.state.PositionState === HomebridgeStatusState.DECREASING &&
           this.targetPosition >= this.state.CurrentPosition);
 
       if (wasMovedFromExternal) {
-        // little hack to correctly show "opening" and "closing" status in Home app
+        // Offset the current position so Home shows movement triggered by another remote.
         if (this.state.PositionState === HomebridgeStatusState.INCREASING) {
           this.shutterService
             .getCharacteristic(hap.Characteristic.CurrentPosition)
@@ -175,7 +167,6 @@ export class SelveShutter implements AccessoryPlugin {
       }
     });
 
-    // request current position on startup
     this.usbService.requestUpdate(this.device).catch((err: Error) => log.error(err.message));
 
     this.services = [

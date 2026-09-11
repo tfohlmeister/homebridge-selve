@@ -1,7 +1,5 @@
 {
-  "watch": [
-    "src"
-  ],
+  "watch": ["src"],
   "ext": "ts",
   "ignore": [],
   "exec": "pnpm build && homebridge -D -P . -U .homebridge-dev",
