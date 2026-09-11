@@ -28,8 +28,7 @@
   "files": [
     "LICENSE",
     "dist",
-    "config.schema.json",
-    "docs"
+    "config.schema.json"
   ],
   "dependencies": {
     "fast-xml-parser": "^5.8.0",

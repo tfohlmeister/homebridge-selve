@@ -22,9 +22,6 @@ The original author and MIT license are retained.
 - Fragmented, combined, malformed and oversized XML messages are handled. Gateway faults are logged.
 - HomeKit reports unavailable until a receiver state is known, and after a USB failure, instead of reporting an assumed open position.
 
-See [validation results](docs/validation.md) for the tested versions and remaining limits.
-
-
 ## Safe upgrade notes
 This plugin does not pair, unpair, renumber, or discover Selve devices. Pairing lives in the Selve USB-RF gateway and receivers. The plugin only sends commands to the `device` IDs already configured in Homebridge.
 
