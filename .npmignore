@@ -7,7 +7,7 @@ src
 .github
 
 # eslint
-.eslintrc
+eslint.config.js
 
 # typescript
 tsconfig.json
@@ -82,7 +82,7 @@ web_modules/
 # Optional REPL history
 .node_repl_history
 
-# Output of 'npm pack'
+# Output of package-manager pack commands
 *.tgz
 
 # Yarn Integrity file

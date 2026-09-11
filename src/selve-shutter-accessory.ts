@@ -1,16 +1,13 @@
 import {
-  AccessoryPlugin,
-  CharacteristicEventTypes,
-  CharacteristicGetCallback,
-  CharacteristicSetCallback,
-  CharacteristicValue,
-  HAP,
-  Logging,
-  Service,
+  type AccessoryPlugin,
+  type CharacteristicValue,
+  type HAP,
+  type Logging,
+  type Service,
 } from "homebridge";
-import { CommeoState, HomebridgeStatusState } from "./data/commeo-state";
-import { SelveAcessoryConfig } from "./data/selve-accessory-config";
-import { USBRfService } from "./util/usb-rf.service";
+import { CommeoState, HomebridgeStatusState } from "./data/commeo-state.js";
+import { SelveAcessoryConfig } from "./data/selve-accessory-config.js";
+import { USBRfService } from "./util/usb-rf.service.js";
 
 export class SelveShutter implements AccessoryPlugin {
   private readonly log: Logging;
@@ -26,6 +23,7 @@ export class SelveShutter implements AccessoryPlugin {
   private state: CommeoState;
   private services: Array<Service>;
   private targetPosition = 100;
+  private stateKnown = false;
 
   constructor(hap: HAP, log: Logging, config: SelveAcessoryConfig, usbService: USBRfService) {
     this.log = log;
@@ -42,37 +40,54 @@ export class SelveShutter implements AccessoryPlugin {
     this.intermediate2SwitchService = new hap.Service.Switch(`${this.name} Position 2`, "2");
     this.stopSwitchService = new hap.Service.Switch(`${this.name} Stop`, "3");
 
+    const requireState = () => {
+      if (!this.stateKnown) {
+        throw new hap.HapStatusError(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+      }
+    };
+    this.usbService.eventEmitter.on("unavailable", () => {
+      this.stateKnown = false;
+      this.shutterService.updateCharacteristic(hap.Characteristic.CurrentPosition,
+        new hap.HapStatusError(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE));
+    });
+
     // setup shutter services
     this.shutterService
       .getCharacteristic(hap.Characteristic.CurrentPosition)
-      .on(CharacteristicEventTypes.GET, (cb: CharacteristicGetCallback) => cb(null, this.state.CurrentPosition));
+      .onGet(() => { requireState(); return this.state.CurrentPosition; });
 
     this.shutterService
       .getCharacteristic(hap.Characteristic.TargetPosition)
-      .on(CharacteristicEventTypes.GET, (cb: CharacteristicGetCallback) => cb(null, this.targetPosition))
-      .on(CharacteristicEventTypes.SET, (newPosition: CharacteristicValue, cb: CharacteristicSetCallback) => {
+      .onGet(() => { requireState(); return this.targetPosition; })
+      .onSet(async (newPosition: CharacteristicValue) => {
         this.log.info(`[${this.name}] Set new target position to ${newPosition}`);
+        const previousTarget = this.targetPosition;
         this.targetPosition = Number(newPosition);
-        this.usbService.sendMovePosition(this.device, this.targetPosition, cb);
+        try {
+          await this.usbService.sendMovePosition(this.device, this.targetPosition);
+        } catch (error) {
+          this.targetPosition = previousTarget;
+          throw error;
+        }
       });
 
     this.shutterService
       .getCharacteristic(hap.Characteristic.PositionState)
-      .on(CharacteristicEventTypes.GET, (cb: CharacteristicGetCallback) => cb(null, this.state.PositionState));
+      .onGet(() => { requireState(); return this.state.PositionState; });
 
     this.shutterService
       .getCharacteristic(hap.Characteristic.ObstructionDetected)
-      .on(CharacteristicEventTypes.GET, (cb: CharacteristicGetCallback) => cb(null, this.state.ObstructionDetected));
+      .onGet(() => { requireState(); return this.state.ObstructionDetected; });
 
     // setup optional intermediate button services
     this.intermediate1SwitchService
       .getCharacteristic(hap.Characteristic.On)
-      .on(CharacteristicEventTypes.SET, (value: CharacteristicValue, cb: CharacteristicSetCallback) => {
+      .onSet(async (value: CharacteristicValue) => {
         if (!value) {
-          return cb();
+          return;
         }
         this.log.info(`[${this.name}] Set to move to intermediate position 1`);
-        this.usbService.sendMoveIntermediatePosition(this.device, 1, cb);
+        await this.usbService.sendMoveIntermediatePosition(this.device, 1);
 
         // toggle off button after some cooldown
         setTimeout(() => {
@@ -82,12 +97,12 @@ export class SelveShutter implements AccessoryPlugin {
 
     this.intermediate2SwitchService
       .getCharacteristic(hap.Characteristic.On)
-      .on(CharacteristicEventTypes.SET, (value: CharacteristicValue, cb: CharacteristicSetCallback) => {
+      .onSet(async (value: CharacteristicValue) => {
         if (!value) {
-          return cb();
+          return;
         }
         this.log.info(`[${this.name}] Set to move to intermediate position 2`);
-        this.usbService.sendMoveIntermediatePosition(this.device, 2, cb);
+        await this.usbService.sendMoveIntermediatePosition(this.device, 2);
 
         // toggle off button after some cooldown
         setTimeout(() => {
@@ -97,12 +112,12 @@ export class SelveShutter implements AccessoryPlugin {
 
     this.stopSwitchService
       .getCharacteristic(hap.Characteristic.On)
-      .on(CharacteristicEventTypes.SET, (value: CharacteristicValue, cb: CharacteristicSetCallback) => {
+      .onSet(async (value: CharacteristicValue) => {
         if (!value) {
-          return cb();
+          return;
         }
         this.log.info(`[${this.name}] Set to stop`);
-        this.usbService.sendStop(this.device, cb);
+        await this.usbService.sendStop(this.device);
 
         // toggle off button after some cooldown
         setTimeout(() => {
@@ -120,6 +135,7 @@ export class SelveShutter implements AccessoryPlugin {
     this.usbService.eventEmitter.on(String(this.device), (newState: CommeoState) => {
       this.log.info(`[${this.name}] New state`, newState);
       this.state = newState;
+      this.stateKnown = true;
 
       this.shutterService.getCharacteristic(hap.Characteristic.PositionState).updateValue(this.state.PositionState);
       this.shutterService
@@ -160,7 +176,7 @@ export class SelveShutter implements AccessoryPlugin {
     });
 
     // request current position on startup
-    this.usbService.requestUpdate(this.device, (err) => !!err && log.error(err.message));
+    this.usbService.requestUpdate(this.device).catch((err: Error) => log.error(err.message));
 
     this.services = [
       this.informationService,

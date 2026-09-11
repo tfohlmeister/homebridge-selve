@@ -1,0 +1,27 @@
+name: Compatibility
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22.x, 24.x]
+        homebridge: [1.8.0, 2.4.0]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm add --save-dev --save-exact homebridge@${{ matrix.homebridge }}
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm test:runtime
+      - run: pnpm pack --dry-run
