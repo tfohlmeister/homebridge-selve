@@ -140,7 +140,7 @@ export function parseCommeoStateMessage(input: string): ParsedCommeoStateMessage
 }
 
 export class USBRfService {
-  public readonly eventEmitter = new events.EventEmitter();
+  public readonly eventEmitter = new events.EventEmitter().setMaxListeners(64);
   private connection: Connection | undefined;
   private commandQueue: Promise<void> = Promise.resolve();
   private rejectCommand: ((error: Error) => void) | undefined;

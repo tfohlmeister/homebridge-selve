@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { createRequire } from "node:module";
+import process from "node:process";
 import { test } from "node:test";
+import { setImmediate } from "node:timers/promises";
 import { SelveShutter } from "../dist/selve-shutter-accessory.js";
+import { USBRfService } from "../dist/util/usb-rf.service.js";
 import initialize from "../dist/index.js";
 
 // Use the HAP implementation belonging to the Homebridge version under test.
@@ -56,6 +59,38 @@ test("reports unavailable until a receiver status arrives, and after a USB failu
   await assert.rejects(current.handleGetRequest(), e => e === hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
   report(usb, 40);
   assert.equal(await current.handleGetRequest(), 40);
+});
+
+test("supports USB failure notifications for all 64 shutters without listener warnings", async () => {
+  const usb = new USBRfService(log, "/dev/mock");
+  usb.requestUpdate = async () => {};
+  const warnings = [];
+  const onWarning = warning => {
+    if (warning.name === "MaxListenersExceededWarning" && warning.emitter === usb.eventEmitter) {
+      warnings.push(warning);
+    }
+  };
+  process.on("warning", onWarning);
+  try {
+    const positions = Array.from({length: 64}, (_, device) => {
+      const shutter = new SelveShutter(hap, log, {name: `Shutter ${device}`, device}, usb);
+      const covering = shutter.getServices().find(s => s.UUID === hap.Service.WindowCovering.UUID);
+      usb.eventEmitter.emit(String(device), {CurrentPosition: 50, PositionState: 2, ObstructionDetected: false});
+      return covering.getCharacteristic(hap.Characteristic.CurrentPosition);
+    });
+    for (const position of positions) {
+      assert.equal(await position.handleGetRequest(), 50);
+    }
+    usb.eventEmitter.emit("unavailable");
+    for (const position of positions) {
+      await assert.rejects(position.handleGetRequest(), e => e === hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+    }
+    await setImmediate();
+    assert.equal(warnings.length, 0);
+  } finally {
+    process.removeListener("warning", onWarning);
+    usb.shutdown();
+  }
 });
 
 test("sends the configured device and target; restores the previous target on failure", async () => {

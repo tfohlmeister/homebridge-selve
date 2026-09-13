@@ -1,9 +1,7 @@
 # Selve Roller Shutter Accessory
 Exposes up to 64 roller shutters using a Selve USB-RF module paired with Selve Commeo receivers.
 
-
-This fork of [Thorben Fohlmeister's plugin](https://github.com/tfohlmeister/homebridge-selve) supports Homebridge `^1.8.0 || ^2.0.0` and Node.js `^22.12.0 || ^24.0.0 || ^26.0.0`. Node.js 26 requires Homebridge 2.3 or newer.
-The current beta has not been published to npm.
+Version 3 supports Homebridge `^1.8.0 || ^2.0.0` and Node.js `^22.12.0 || ^24.0.0 || ^26.0.0`. Node.js 26 requires Homebridge 2.3 or newer. Older Node.js and Homebridge versions are no longer supported, and the plugin now uses ES modules.
 
 When upgrading, back up your Homebridge configuration and keep the existing shutter names and device IDs to preserve your HomeKit setup.
 

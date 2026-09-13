@@ -1,6 +1,6 @@
 {
   "name": "homebridge-selve",
-  "version": "2.3.0-beta.1",
+  "version": "3.0.0",
   "packageManager": "pnpm@11.18.0",
   "description": "Selve Remote Shutter Support for Homebridge: https://github.com/homebridge/homebridge",
   "type": "module",
@@ -15,10 +15,10 @@
   "author": "Thorben Fohlmeister <thorben@fohlmeister.com>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cojoj/homebridge-selve.git"
+    "url": "git+https://github.com/tfohlmeister/homebridge-selve.git"
   },
   "bugs": {
-    "url": "https://github.com/cojoj/homebridge-selve/issues"
+    "url": "https://github.com/tfohlmeister/homebridge-selve/issues"
   },
   "engines": {
     "node": "^22.12.0 || ^24.0.0 || ^26.0.0",
