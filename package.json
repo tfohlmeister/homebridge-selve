@@ -29,7 +29,7 @@
     "config.schema.json"
   ],
   "dependencies": {
-    "fast-xml-parser": "^3.17.4",
+    "fast-xml-parser": "^5.7.0",
     "seq-queue": "0.0.5",
     "serialport": "^9.2.4",
     "xmldoc": "^1.1.2"
