@@ -2,8 +2,8 @@
 Exposes up to 64 roller shutters using a Selve USB-RF module paired with Selve Commeo receivers.
 
 
-## !!! Depcrecated !!!
-Since I moved on to [HomeAssistant](https://home-assistant.io) I am no longer using this plugin myself and thus deprecating it. Feel free to fork it if you wish. I will leave the repo and npm package available so unless there is a breaking change in the future, this plugin should keep on working as it has been.
+## Maintenance
+The 2023 deprecation notice has been lifted and the project is open for contributions again. I moved my own setup to [Home Assistant](https://home-assistant.io) and no longer run the plugin day to day, so maintenance is handed over to contributors who do. Issues and pull requests are welcome.
 
 
 ## Setup
