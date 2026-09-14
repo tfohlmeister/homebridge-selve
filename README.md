@@ -5,6 +5,10 @@ Version 3 supports Homebridge `^1.8.0 || ^2.0.0` and Node.js `^22.12.0 || ^24.0.
 
 When upgrading, back up your Homebridge configuration and keep the existing shutter names and device IDs to preserve your HomeKit setup.
 
+## Maintenance
+The 2023 deprecation notice has been lifted and the project is open for contributions again. I moved my own setup to [Home Assistant](https://home-assistant.io) and no longer run the plugin day to day, so maintenance is handed over to contributors who do. Issues and pull requests are welcome.
+
+
 ## Setup
 1. Pair roller shutters and USB-RF Gateway using the official Selve tools
 2. Once paired, use [Homebridge Config UI X](https://github.com/oznu/homebridge-config-ui-x) to setup your config and skip the following steps.
