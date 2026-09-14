@@ -1,6 +1,9 @@
 # Selve Roller Shutter Accessory
 Exposes up to 64 roller shutters using a Selve USB-RF module paired with Selve Commeo receivers.
 
+Version 3 supports Homebridge `^1.8.0 || ^2.0.0` and Node.js `^22.12.0 || ^24.0.0 || ^26.0.0`. Node.js 26 requires Homebridge 2.3 or newer. Older Node.js and Homebridge versions are no longer supported, and the plugin now uses ES modules.
+
+When upgrading, back up your Homebridge configuration and keep the existing shutter names and device IDs to preserve your HomeKit setup.
 
 ## Maintenance
 The 2023 deprecation notice has been lifted and the project is open for contributions again. I moved my own setup to [Home Assistant](https://home-assistant.io) and no longer run the plugin day to day, so maintenance is handed over to contributors who do. Issues and pull requests are welcome.
@@ -8,9 +11,9 @@ The 2023 deprecation notice has been lifted and the project is open for contribu
 
 ## Setup
 1. Pair roller shutters and USB-RF Gateway using the official Selve tools
-3. Once paired, use [Homebridge Config UI X](https://github.com/oznu/homebridge-config-ui-x) to setup your config and skip the following steps.
-2. Manual setup: Update your `config.json` and add "Selve" as a new platform. Make sure you set the `usbPort` to the corresponding path of the usb dongle on your system (typically something like `/dev/ttyUSB0` on Linux machines). Also make sure the system user running homebridge has read and write access to this device.
-3. Add as many `shutters` to the config as you have. Each shutter has a `name`, a `device` (the same ActorID (0-63) that was used in the tools app during pairing), and optional parameters to show virtual buttons for intermediate positions.
+2. Once paired, use [Homebridge Config UI X](https://github.com/oznu/homebridge-config-ui-x) to setup your config and skip the following steps.
+3. Manual setup: Update your `config.json` and add "Selve" as a new platform. Make sure you set the `usbPort` to the corresponding path of the usb dongle on your system (typically something like `/dev/ttyUSB0` on Linux machines). Also make sure the system user running homebridge has read and write access to this device.
+4. Add as many `shutters` to the config as you have. Each shutter has a `name`, a `device` (the same ActorID (0-63) that was used in the tools app during pairing), and optional parameters to show virtual buttons for intermediate positions.
 
 **Example config.json:**
 
@@ -67,8 +70,14 @@ You can add another virtual button for stopping any current movement. Simply add
 
 ## Plugin Development
 
-You can run in watch mode to automatically transpile code as you write it:
+Use Node.js 24 and the pnpm version declared in `package.json`.
 
 ```sh
-  npm run watch
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm test
+pnpm test:runtime
 ```
+
+`pnpm watch` uses `.homebridge-dev/config.json`. Give this test bridge a separate identity and stop other instances using the same USB gateway.
+Build an installable package with `pnpm build && pnpm pack`.

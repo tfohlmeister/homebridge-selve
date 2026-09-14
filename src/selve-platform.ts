@@ -1,30 +1,19 @@
 import {
-  AccessoryPlugin,
-  API,
-  HAP,
-  Logging,
-  StaticPlatformPlugin,
+  type AccessoryPlugin,
+  type API,
+  type Logging,
+  type StaticPlatformPlugin,
 } from 'homebridge';
-import { SelvePlatformConfig } from './data/selve-platform-config';
-import { SelveShutter } from './selve-shutter-accessory';
-import { USBRfService } from './util/usb-rf.service';
+import { SelvePlatformConfig } from './data/selve-platform-config.js';
+import { SelveShutter } from './selve-shutter-accessory.js';
+import { USBRfService } from './util/usb-rf.service.js';
 
-const PLATFORM_NAME = 'selve';
-
-let hap: HAP;
-
-export = (api: API) => {
-  hap = api.hap;
-
-  api.registerPlatform(PLATFORM_NAME, SelvePlatform);
-};
-
-class SelvePlatform implements StaticPlatformPlugin {
+export class SelvePlatform implements StaticPlatformPlugin {
   private readonly log: Logging;
   private readonly usbService: USBRfService;
   private readonly shutters: Array<SelveShutter>;
 
-  constructor(log: Logging, config: SelvePlatformConfig) {
+  constructor(log: Logging, config: SelvePlatformConfig, api: API) {
     this.log = log;
 
     if (!config.usbPort) {
@@ -32,6 +21,7 @@ class SelvePlatform implements StaticPlatformPlugin {
     }
 
     this.usbService = new USBRfService(log, config.usbPort);
+    api.on("shutdown", () => this.usbService.shutdown());
 
     const shutterConfigs = config.shutters || [];
     if (shutterConfigs.length === 0) {
@@ -47,7 +37,7 @@ class SelvePlatform implements StaticPlatformPlugin {
           this.log.error('Shutter device undefined or not a number!');
           return null;
         }
-        return new SelveShutter(hap, log, config, this.usbService);
+        return new SelveShutter(api.hap, log, config, this.usbService);
       })
       .filter((s) => !!s) as Array<SelveShutter>;
 
