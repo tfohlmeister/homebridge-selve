@@ -24,6 +24,11 @@ export class SelveShutter implements AccessoryPlugin {
   private services: Array<Service>;
   private targetPosition = 100;
   private stateKnown = false;
+  private retryTimer: ReturnType<typeof setTimeout> | undefined;
+  private retryDelayMs = 1000;
+  private updatePending = false;
+  private stopped = false;
+  private targetRevision = 0;
 
   constructor(hap: HAP, log: Logging, config: SelveAcessoryConfig, usbService: USBRfService) {
     this.log = log;
@@ -48,6 +53,11 @@ export class SelveShutter implements AccessoryPlugin {
       this.stateKnown = false;
       this.shutterService.updateCharacteristic(hap.Characteristic.CurrentPosition,
         new hap.HapStatusError(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE));
+      this.scheduleUpdate();
+    });
+    this.usbService.eventEmitter.once("shutdown", () => {
+      this.stopped = true;
+      clearTimeout(this.retryTimer);
     });
 
     this.shutterService
@@ -60,11 +70,14 @@ export class SelveShutter implements AccessoryPlugin {
       .onSet(async (newPosition: CharacteristicValue) => {
         this.log.info(`[${this.name}] Set new target position to ${newPosition}`);
         const previousTarget = this.targetPosition;
+        const revision = ++this.targetRevision;
         this.targetPosition = Number(newPosition);
         try {
           await this.usbService.sendMovePosition(this.device, this.targetPosition);
         } catch (error) {
-          this.targetPosition = previousTarget;
+          if (this.targetRevision === revision) {
+            this.targetPosition = previousTarget;
+          }
           throw error;
         }
       });
@@ -84,11 +97,13 @@ export class SelveShutter implements AccessoryPlugin {
           return;
         }
         this.log.info(`[${this.name}] Set to move to intermediate position 1`);
-        await this.usbService.sendMoveIntermediatePosition(this.device, 1);
-
-        setTimeout(() => {
-          this.intermediate1SwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
-        }, 500);
+        try {
+          await this.usbService.sendMoveIntermediatePosition(this.device, 1);
+        } finally {
+          setTimeout(() => {
+            this.intermediate1SwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
+          }, 500);
+        }
       });
 
     this.intermediate2SwitchService
@@ -98,11 +113,13 @@ export class SelveShutter implements AccessoryPlugin {
           return;
         }
         this.log.info(`[${this.name}] Set to move to intermediate position 2`);
-        await this.usbService.sendMoveIntermediatePosition(this.device, 2);
-
-        setTimeout(() => {
-          this.intermediate2SwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
-        }, 500);
+        try {
+          await this.usbService.sendMoveIntermediatePosition(this.device, 2);
+        } finally {
+          setTimeout(() => {
+            this.intermediate2SwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
+          }, 500);
+        }
       });
 
     this.stopSwitchService
@@ -112,11 +129,13 @@ export class SelveShutter implements AccessoryPlugin {
           return;
         }
         this.log.info(`[${this.name}] Set to stop`);
-        await this.usbService.sendStop(this.device);
-
-        setTimeout(() => {
-          this.stopSwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
-        }, 500);
+        try {
+          await this.usbService.sendStop(this.device);
+        } finally {
+          setTimeout(() => {
+            this.stopSwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
+          }, 500);
+        }
       });
 
     this.informationService = new hap.Service.AccessoryInformation()
@@ -128,6 +147,9 @@ export class SelveShutter implements AccessoryPlugin {
       this.log.info(`[${this.name}] New state`, newState);
       this.state = newState;
       this.stateKnown = true;
+      clearTimeout(this.retryTimer);
+      this.retryTimer = undefined;
+      this.retryDelayMs = 1000;
 
       this.shutterService.getCharacteristic(hap.Characteristic.PositionState).updateValue(this.state.PositionState);
       this.shutterService
@@ -160,6 +182,7 @@ export class SelveShutter implements AccessoryPlugin {
           .updateValue(this.state.CurrentPosition);
       }
       if (this.state.PositionState === HomebridgeStatusState.STOPPED) {
+        this.targetRevision++;
         this.targetPosition = this.state.CurrentPosition;
         this.shutterService
           .getCharacteristic(hap.Characteristic.TargetPosition)
@@ -167,7 +190,7 @@ export class SelveShutter implements AccessoryPlugin {
       }
     });
 
-    this.usbService.requestUpdate(this.device).catch((err: Error) => log.error(err.message));
+    void this.requestUpdate();
 
     this.services = [
       this.informationService,
@@ -182,5 +205,31 @@ export class SelveShutter implements AccessoryPlugin {
 
   public getServices(): Array<Service> {
     return this.services;
+  }
+
+  private scheduleUpdate(): void {
+    if (this.stopped || this.stateKnown || this.updatePending || this.retryTimer) {
+      return;
+    }
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = undefined;
+      void this.requestUpdate();
+    }, this.retryDelayMs);
+    this.retryTimer.unref();
+    this.retryDelayMs = Math.min(this.retryDelayMs * 2, 30000);
+  }
+
+  private async requestUpdate(): Promise<void> {
+    this.updatePending = true;
+    try {
+      await this.usbService.requestUpdate(this.device);
+    } catch (error) {
+      if (!this.stopped) {
+        this.log.warn(`[${this.name}] Status request failed; retrying`, String(error));
+      }
+    } finally {
+      this.updatePending = false;
+      this.scheduleUpdate();
+    }
   }
 }

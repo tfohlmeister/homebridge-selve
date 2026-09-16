@@ -1,3 +1,11 @@
+#### 3.0.0 (unreleased)
+
+* Require Node.js 22.12+, 24 or 26 and Homebridge 1.8+ or 2.x; Node.js 26 requires Homebridge 2.3+. Switch to ES modules and SerialPort 13.
+* Recover status automatically after USB failures or missed replies, with bounded retry backoff.
+* Fix serial frame buffering, drain ordering, cancelled writes, target rollback and momentary button resets.
+* Preserve accessory identities and support up to 64 shutters without listener warnings.
+* Add compatibility and regression tests and refresh dependencies.
+
 #### 2.2.4 (2022-09-26)
 
 ##### Chores
@@ -90,4 +98,3 @@ Breaking changes: This plugin is now a platform plugin. Please check README on h
 
 *  Version script for publishing ([88c2e38f](https://github.com/tfohlmeister/homebridge-selve/commit/88c2e38fc7de9e25a9f111e1bbaeb67877a87a27))
 *  Reworked status callback ([0c7ccfc1](https://github.com/tfohlmeister/homebridge-selve/commit/0c7ccfc107cbfbd3a9e7be49172bacb069d57650))
-

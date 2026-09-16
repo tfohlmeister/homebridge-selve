@@ -1,2 +1,5 @@
 allowBuilds:
   '@serialport/bindings-cpp': true
+
+overrides:
+  brace-expansion: ^5.0.9

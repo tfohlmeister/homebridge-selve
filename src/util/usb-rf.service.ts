@@ -18,6 +18,8 @@ interface Connection {
   port: SerialPortLike;
   ready: Promise<void>;
   rejectReady: (error: Error) => void;
+  closed: Promise<void>;
+  resolveClosed: () => void;
   invalid: boolean;
   opening: boolean;
   closing: boolean;
@@ -36,7 +38,7 @@ export interface ParsedCommeoStateMessage {
   state: CommeoState;
 }
 
-const parser = new XMLParser();
+const parser = new XMLParser({ parseTagValue: false });
 
 function toArray<T>(value: T | T[] | undefined): T[] {
   if (value === undefined) {
@@ -105,13 +107,18 @@ export function parseCommeoStateMessage(input: string): ParsedCommeoStateMessage
     }
   }
 
-  const payload = toArray<number>(
+  const rawPayload = toArray<unknown>(
     data.methodCall
       ? data.methodCall.array?.int
       : data.methodResponse.array?.int
-  ).map(Number);
+  );
 
-  if (payload.length < 5 || payload.some((value) => !Number.isInteger(value)) ||
+  if (rawPayload.some(value => typeof value !== "string" || !/^-?\d+$/.test(value))) {
+    return undefined;
+  }
+  const payload = rawPayload.map(Number);
+
+  if (payload.length < 3 || payload.some((value) => !Number.isSafeInteger(value)) ||
       payload[0] < 0 || payload[0] > 63 || payload[2] < 0 || payload[2] > COMMEO_MAX_POSITION) {
     return undefined;
   }
@@ -125,7 +132,7 @@ export function parseCommeoStateMessage(input: string): ParsedCommeoStateMessage
       ? HomebridgeStatusState.DECREASING
       : HomebridgeStatusState.STOPPED;
   const CurrentPosition = convertPositionToHomekit(payload[2]);
-  const flags = String(payload[4]).split("");
+  const flags = String(payload[4] ?? 0).split("");
   const ObstructionDetected =
     flags[0] === "1" || flags[1] === "1" || flags[2] === "1";
 
@@ -166,7 +173,7 @@ export class USBRfService {
       const length = end.index + end[0].length;
       const frame = connection.buffer.slice(0, length).trim();
       connection.buffer = connection.buffer.slice(length);
-      const start = frame.search(/<method(?:Response|Call)>/);
+      const start = Math.max(frame.lastIndexOf("<methodCall>"), frame.lastIndexOf("<methodResponse>"));
       const input = start < 0 ? frame : frame.slice(start);
       try {
         if (XMLValidator.validate(input) !== true) {
@@ -202,6 +209,7 @@ export class USBRfService {
       if (this.connection === connection) {
         this.connection = undefined;
       }
+      connection.resolveClosed();
       return;
     }
     connection.closing = true;
@@ -211,8 +219,11 @@ export class USBRfService {
         this.log.error("Unable to close Selve USB port", error.message);
       }
       // Never open a second connection while this one still owns the port.
-      if (!connection.port.isOpen && this.connection === connection) {
-        this.connection = undefined;
+      if (!connection.port.isOpen) {
+        if (this.connection === connection) {
+          this.connection = undefined;
+        }
+        connection.resolveClosed();
       }
     });
   }
@@ -248,10 +259,12 @@ export class USBRfService {
       resolveReady = resolve;
       rejectReady = reject;
     });
+    let resolveClosed!: () => void;
+    const closed = new Promise<void>(resolve => { resolveClosed = resolve; });
     // Errors may arrive synchronously from a test binding or during shutdown.
     void ready.catch(() => undefined);
     const connection: Connection = {
-      port, ready, rejectReady, invalid: false, opening: true, closing: false,
+      port, ready, rejectReady, closed, resolveClosed, invalid: false, opening: true, closing: false,
       buffer: "", onData: (data) => this.handleData(connection, data),
     };
     this.connection = connection;
@@ -292,6 +305,7 @@ export class USBRfService {
     return new Promise((resolve, reject) => {
       let settled = false;
       let connection: Connection | undefined;
+      let phase = "waiting for the previous connection to close";
       const finish = (error?: Error | null) => {
         if (settled) {
           return;
@@ -308,16 +322,22 @@ export class USBRfService {
           resolve();
         }
       };
-      const timeout = setTimeout(() => finish(new Error("Selve USB command timeout")), this.timeoutMs);
+      const timeout = setTimeout(() => finish(new Error(`Selve USB command timeout: ${phase}`)), this.timeoutMs);
       this.rejectCommand = finish;
-      try {
+      const closing = this.connection?.invalid ? this.connection.closed : Promise.resolve();
+      void closing.then(() => {
+        if (settled) {
+          return;
+        }
         connection = this.openPort();
+        phase = "opening the port";
         const current = connection;
         void current.ready.then(() => {
           // A timed-out open must never send the abandoned command later.
           if (settled || current.invalid || this.stopped) {
             return;
           }
+          phase = "writing to the port";
           current.port.write(data, (error?: Error | null) => {
             if (settled) {
               return;
@@ -325,18 +345,20 @@ export class USBRfService {
             if (error) {
               finish(error);
             } else {
+              phase = "draining the port";
               current.port.drain(finish);
             }
           });
         }).catch(finish);
-      } catch (error) {
+      }).catch(error => {
         finish(error instanceof Error ? error : new Error(String(error)));
-      }
+      });
     });
   }
 
   public shutdown(): void {
     this.stopped = true;
+    this.eventEmitter.emit("shutdown");
     const error = new Error("Selve USB service has shut down");
     this.rejectCommand?.(error);
     if (this.connection) {

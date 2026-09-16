@@ -34,13 +34,14 @@ function collect(data) {
 child.stdout.on("data", collect);
 child.stderr.on("data", collect);
 try {
-  const [code] = await once(child, "exit");
+  const [code, signal] = await once(child, "exit");
   assert.equal(timedOut, false, "Homebridge starts and shuts down within 30 seconds");
   assert.equal(started, true, output);
   assert.match(output, /Registering platform 'homebridge-selve.selve'/);
   assert.match(output, /Finished initializing 1 shutter/);
-  assert.ok(code === 0 || code === 143, `Unexpected exit code ${code}: ${output}`);
-  console.log("Homebridge loaded Selve, registered its accessory, survived missing USB, and shut down cleanly.");
+  assert.match(output, /Got SIGTERM, shutting down Homebridge/);
+  assert.ok((code === 0 || code === 143) && signal === null, `Unexpected exit: code=${code}, signal=${signal}: ${output}`);
+  console.log(`Homebridge loaded Selve, registered its accessory, survived missing USB, and exited after SIGTERM (code=${code}, signal=${signal}).`);
 } finally {
   clearTimeout(timeout);
   child.kill("SIGKILL");

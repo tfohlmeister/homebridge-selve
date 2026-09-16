@@ -34,7 +34,7 @@ function report(usb, CurrentPosition = 50, PositionState = 2) {
 
 test("registers the legacy platform alias", () => {
   let alias;
-  initialize({registerPlatform(name) { alias = name; }});
+  initialize({versionGreaterOrEqual: () => true, registerPlatform(name) { alias = name; }});
   assert.equal(alias, "selve");
 });
 
@@ -120,4 +120,175 @@ test("optional buttons issue the right commands and ignore off writes", async ()
     await on.handleSetRequest(false);
   }
   assert.deepEqual(calls, [["update",4],["intermediate",4,1],["intermediate",4,2],["stop",4]]);
+});
+
+test("retries missing replies with capped backoff, stops on state, and cancels on shutdown", async t => {
+  t.mock.timers.enable({apis: ["setTimeout"]});
+  const {usb, calls} = setup();
+  await setImmediate();
+  for (const delay of [1000, 2000, 4000, 8000, 16000, 30000, 30000]) {
+    const before = calls.length;
+    t.mock.timers.tick(delay - 1);
+    await setImmediate();
+    assert.equal(calls.length, before);
+    t.mock.timers.tick(1);
+    await setImmediate();
+    assert.equal(calls.length, before + 1);
+  }
+  report(usb);
+  const recovered = calls.length;
+  t.mock.timers.tick(60000);
+  await setImmediate();
+  assert.equal(calls.length, recovered);
+  usb.eventEmitter.emit("unavailable");
+  t.mock.timers.tick(1000);
+  await setImmediate();
+  assert.equal(calls.length, recovered + 1);
+  usb.eventEmitter.emit("shutdown");
+  t.mock.timers.tick(60000);
+  await setImmediate();
+  assert.equal(calls.length, recovered + 1);
+});
+
+test("does not accumulate retries while a status write is queued", async t => {
+  t.mock.timers.enable({apis: ["setTimeout"]});
+  const {usb, calls} = setup();
+  await setImmediate();
+  let finish;
+  usb.requestUpdate = () => {
+    calls.push(["pending"]);
+    return new Promise(resolve => { finish = resolve; });
+  };
+  t.mock.timers.tick(1000);
+  await setImmediate();
+  for (let i = 0; i < 3; i++) {
+    usb.eventEmitter.emit("unavailable");
+    t.mock.timers.tick(30000);
+    await setImmediate();
+  }
+  assert.equal(calls.length, 2);
+  usb.eventEmitter.emit("shutdown");
+  finish();
+  await setImmediate();
+  t.mock.timers.tick(60000);
+  await setImmediate();
+  assert.equal(calls.length, 2);
+});
+
+test("a failed move preserves a newer stopped status or newer target", async () => {
+  const {covering, usb} = setup();
+  report(usb, 35);
+  const target = covering.getCharacteristic(hap.Characteristic.TargetPosition);
+  let fail;
+  usb.sendMovePosition = () => new Promise((_, reject) => { fail = reject; });
+  const failure = assert.rejects(target.handleSetRequest(70));
+  report(usb, 70);
+  fail(new Error("USB disconnected"));
+  await failure;
+  assert.equal(await target.handleGetRequest(), 70);
+  const secondFailure = assert.rejects(target.handleSetRequest(10));
+  usb.sendMovePosition = async () => {};
+  await target.handleSetRequest(80);
+  fail(new Error("Earlier command failed"));
+  await secondFailure;
+  assert.equal(await target.handleGetRequest(), 80);
+  usb.eventEmitter.emit("shutdown");
+});
+
+test("failed momentary controls reset and accept another press", async t => {
+  t.mock.timers.enable({apis: ["setTimeout"]});
+  const {shutter, usb} = setup({showIntermediate1: true, showIntermediate2: true, showStop: true});
+  usb.sendMoveIntermediatePosition = usb.sendStop = async () => { throw new Error("USB disconnected"); };
+  for (const service of shutter.getServices().filter(s => s.UUID === hap.Service.Switch.UUID)) {
+    const on = service.getCharacteristic(hap.Characteristic.On);
+    for (let press = 0; press < 2; press++) {
+      on.updateValue(true);
+      await assert.rejects(on.handleSetRequest(true));
+      t.mock.timers.tick(500);
+      assert.equal(await on.handleGetRequest(), false);
+    }
+  }
+  usb.eventEmitter.emit("shutdown");
+});
+
+for (const failure of ["disconnect", "write timeout"]) {
+  test(`recovers from ${failure} using status reads without HomeKit writes`, async t => {
+    t.mock.timers.enable({apis: ["setTimeout"]});
+    let absent = false;
+    let dropReply = false;
+    const ports = [];
+    class Port extends EventEmitter {
+      isOpen = false;
+      writes = [];
+      open(cb) { this.isOpen = !absent; cb(absent ? new Error("Missing USB") : undefined); }
+      close(cb) { this.isOpen = false; this.emit("close"); cb(); }
+      drain(cb) { cb(); }
+      write(data, cb) {
+        this.writes.push(data);
+        if (failure === "write timeout" && data.includes("command.device")) { return; }
+        if (!dropReply) {
+          const device = /<int>(\d+)<\/int>/.exec(data)[1];
+          this.emit("data", `<methodResponse><array><string>selve.GW.device.getValues</string><int>${device}</int><int>1</int><int>32768</int></array></methodResponse>`);
+        }
+        cb();
+      }
+    }
+    const usb = new USBRfService(log, "/dev/mock", {
+      commandDelayMs: 0, timeoutMs: 100,
+      serialPortFactory: () => { const port = new Port(); ports.push(port); return port; },
+    });
+    const currents = Array.from({length: 64}, (_, device) => {
+      const shutter = new SelveShutter(hap, log, {name: `Shutter ${device}`, device}, usb);
+      return shutter.getServices().find(s => s.UUID === hap.Service.WindowCovering.UUID)
+        .getCharacteristic(hap.Characteristic.CurrentPosition);
+    });
+    const advance = async ms => { t.mock.timers.tick(ms); await setImmediate(); };
+    const drainQueue = async () => { for (let i = 0; i < 70; i++) { await advance(0); } };
+    try {
+      await drainQueue();
+      for (const current of currents) { assert.equal(await current.handleGetRequest(), 50); }
+      if (failure === "disconnect") {
+        absent = true;
+        ports[0].emit("error", new Error("USB removed"));
+      } else {
+        const rejected = assert.rejects(usb.sendMovePosition(0, 70), /timeout/i);
+        await drainQueue();
+        await advance(100);
+        await rejected;
+      }
+      for (const current of currents) {
+        await assert.rejects(current.handleGetRequest(), e => e === hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+      }
+      await advance(1000);
+      await drainQueue();
+      absent = false;
+      dropReply = true;
+      await advance(2000);
+      await drainQueue();
+      dropReply = false;
+      await advance(4000);
+      await drainQueue();
+      for (const current of currents) { assert.equal(await current.handleGetRequest(), 50); }
+      assert.ok(ports.length > 1);
+      assert.ok(ports.slice(1).flatMap(p => p.writes).every(xml => xml.includes("getValues")));
+    } finally { usb.shutdown(); }
+  });
+}
+
+test("rejects Node 26 with older Homebridge before registering the platform", () => {
+  const descriptor = Object.getOwnPropertyDescriptor(process.versions, "node");
+  try {
+    Object.defineProperty(process.versions, "node", {value: "26.8.2"});
+    const api = {
+      versionGreaterOrEqual(version) { assert.equal(version, "2.3.0"); return false; },
+      registerPlatform() { assert.fail("Unsupported platform must not register"); },
+    };
+    assert.throws(() => initialize(api), /Node.js 26 requires Homebridge 2.3.0/);
+    Object.defineProperty(process.versions, "node", {value: "24.20.0"});
+    let registered = false;
+    initialize({...api, registerPlatform() { registered = true; }});
+    assert.equal(registered, true);
+  } finally {
+    Object.defineProperty(process.versions, "node", descriptor);
+  }
 });

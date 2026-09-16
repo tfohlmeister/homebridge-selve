@@ -171,7 +171,7 @@ test("does not transmit a timed-out command when a delayed open completes", asyn
   port.open = (callback) => { completeOpen = () => { port.isOpen = true; callback(); }; };
   const service = mockService(port, { timeoutMs: 5 });
   await assert.rejects(service.sendMovePosition(4, 0), /timeout/i);
-  await assert.rejects(service.sendStop(4), /still closing/);
+  await assert.rejects(service.sendStop(4), /timeout/i);
   completeOpen();
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.deepEqual(port.writes, []);
@@ -284,5 +284,54 @@ test("recovers after malformed and oversized serial input", async () => {
   port.emit("data", Buffer.from("x".repeat(65537)));
   port.emit("data", Buffer.from("<methodCall><methodName>selve.GW.event.device</methodName><array><int>4</int><int>1</int><int>0</int><int>0</int><int>0</int></array></methodCall>"));
   assert.equal(states, 1);
+  service.shutdown();
+});
+
+test("accepts legacy status frames without flags but rejects empty or non-integer fields", () => {
+  const frame = values => `<methodCall><methodName>selve.GW.event.device</methodName><array>${values.map(v => `<int>${v}</int>`).join("")}</array></methodCall>`;
+  for (const values of [[4, 1, 32768], [4, 1, 32768, 0]]) {
+    const parsed = parseCommeoStateMessage(frame(values));
+    assert.equal(parsed.state.CurrentPosition, 50);
+    assert.equal(parsed.state.ObstructionDetected, false);
+  }
+  for (const invalid of ["", " ", "abc", "1.5", "0x10", "1e2"]) {
+    for (const index of [0, 1, 2, 4]) {
+      const values = [4, 1, 32768, 0, 0];
+      values[index] = invalid;
+      assert.equal(parseCommeoStateMessage(frame(values)), undefined, `${index}: ${invalid}`);
+    }
+  }
+});
+
+test("resynchronizes a truncated frame at the next valid method root", async () => {
+  const port = new MockSerialPort();
+  const service = mockService(port);
+  const states = [];
+  service.eventEmitter.on("4", state => states.push(state));
+  await service.requestUpdate(4);
+  for (const root of ["methodCall", "methodResponse"]) {
+    port.emit("data", Buffer.from(`<${root}><array><int>4</int>`));
+    port.emit("data", Buffer.from("<methodCall><methodName>selve.GW.event.device</methodName><array><int>4</int><int>1</int><int>0</int></array></methodCall>"));
+  }
+  assert.equal(states.length, 2);
+  service.shutdown();
+});
+
+test("waits for a slow asynchronous close before opening a replacement", async () => {
+  const port = new MockSerialPort();
+  const replacement = new MockSerialPort();
+  let finishClose;
+  port.close = cb => { finishClose = () => { port.isOpen = false; port.emit("close"); cb(); }; };
+  let opens = 0;
+  const service = mockService(null, {serialPortFactory: () => ++opens === 1 ? port : replacement});
+  await service.requestUpdate(4);
+  port.emit("error", new Error("USB error"));
+  const next = service.requestUpdate(4);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(opens, 1);
+  finishClose();
+  await next;
+  assert.equal(opens, 2);
+  assert.deepEqual(replacement.writes, [createRequestUpdateCommand(4)]);
   service.shutdown();
 });

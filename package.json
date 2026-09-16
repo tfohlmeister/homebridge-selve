@@ -45,9 +45,6 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.4"
   },
-  "overrides": {
-    "braces": "^3.0.3"
-  },
   "scripts": {
     "clean": "rimraf ./dist",
     "lint": "eslint . --max-warnings=0",
