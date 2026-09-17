@@ -1,7 +1,9 @@
 {
   "name": "homebridge-selve",
-  "version": "2.2.4",
+  "version": "3.0.0",
+  "packageManager": "pnpm@11.18.0",
   "description": "Selve Remote Shutter Support for Homebridge: https://github.com/homebridge/homebridge",
+  "type": "module",
   "license": "MIT",
   "keywords": [
     "homebridge-plugin",
@@ -13,46 +15,45 @@
   "author": "Thorben Fohlmeister <thorben@fohlmeister.com>",
   "repository": {
     "type": "git",
-    "url": "git://github.com/tfohlmeister/homebridge-selve.git"
+    "url": "git+https://github.com/tfohlmeister/homebridge-selve.git"
   },
   "bugs": {
-    "url": "http://github.com/tfohlmeister/homebridge-selve/issues"
+    "url": "https://github.com/tfohlmeister/homebridge-selve/issues"
   },
   "engines": {
-    "node": ">=14.18.1",
-    "homebridge": ">=1.3.5"
+    "node": "^22.12.0 || ^24.0.0 || ^26.0.0",
+    "homebridge": "^1.8.0 || ^2.0.0"
   },
-  "main": "dist/selve-platform.js",
+  "main": "dist/index.js",
   "files": [
     "LICENSE",
     "dist",
     "config.schema.json"
   ],
   "dependencies": {
-    "fast-xml-parser": "^3.17.4",
-    "seq-queue": "0.0.5",
-    "serialport": "^9.2.4",
-    "xmldoc": "^1.1.2"
+    "fast-xml-parser": "^5.8.0",
+    "serialport": "^13.0.0"
   },
   "devDependencies": {
-    "@types/node": "^16.10.9",
-    "@typescript-eslint/eslint-plugin": "^5.0.0",
-    "@typescript-eslint/parser": "^5.0.0",
-    "@types/serialport": "^8.0.2",
-    "eslint": "^8.0.1",
-    "homebridge": "^1.3.5",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.4.0",
     "generate-changelog": "^1.8.0",
-    "nodemon": "^2.0.6",
-    "rimraf": "^3.0.2",
-    "typescript": "^4.4.4",
-    "ts-node": "^10.3.0"
+    "homebridge": "^2.4.0",
+    "nodemon": "^3.1.14",
+    "rimraf": "^6.1.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.4"
   },
   "scripts": {
     "clean": "rimraf ./dist",
-    "lint": "eslint src/**.ts --max-warnings=0",
-    "watch": "npm run build && npm link && nodemon",
+    "lint": "eslint . --max-warnings=0",
+    "test": "pnpm build && pnpm test:unit",
+    "watch": "pnpm build && nodemon",
     "build": "rimraf ./dist && tsc",
-    "prepublishOnly": "npm run lint && npm run build",
-    "version": "npm run clean && npm run build && generate-changelog && git add CHANGELOG.md"
+    "prepublishOnly": "pnpm lint && pnpm test && pnpm pack --dry-run",
+    "version": "pnpm clean && pnpm build && generate-changelog && git add CHANGELOG.md",
+    "test:unit": "node --test test/*.test.mjs",
+    "test:runtime": "node scripts/runtime-smoke.mjs"
   }
 }
