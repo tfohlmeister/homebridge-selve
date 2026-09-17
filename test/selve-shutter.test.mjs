@@ -7,6 +7,7 @@ import { setImmediate } from "node:timers/promises";
 import { SelveShutter } from "../dist/selve-shutter-accessory.js";
 import { USBRfService } from "../dist/util/usb-rf.service.js";
 import initialize from "../dist/index.js";
+import { SelvePlatform } from "../dist/selve-platform.js";
 
 // Use the HAP implementation belonging to the Homebridge version under test.
 const require = createRequire(import.meta.url);
@@ -36,6 +37,62 @@ test("registers the legacy platform alias", () => {
   let alias;
   initialize({versionGreaterOrEqual: () => true, registerPlatform(name) { alias = name; }});
   assert.equal(alias, "selve");
+});
+
+test("platform rejects a missing USB path before initializing accessories", () => {
+  assert.throws(() => new SelvePlatform(log, {}, {hap}), /usbPort/);
+});
+
+test("platform tolerates an empty configuration and reports why", () => {
+  const warnings = [];
+  const api = Object.assign(new EventEmitter(), {hap});
+  const platform = new SelvePlatform({...log, warn: message => warnings.push(message)}, {usbPort: "/dev/mock"}, api);
+  platform.accessories(accessories => assert.deepEqual(accessories, []));
+  assert.match(warnings[0], /No shutter configs/);
+  api.emit("shutdown");
+});
+
+test("platform skips invalid entries, preserves valid device IDs, and propagates shutdown", async t => {
+  const requested = [];
+  const errors = [];
+  const services = [];
+  t.mock.method(USBRfService.prototype, "requestUpdate", async function (device) {
+    services.push(this);
+    requested.push(device);
+  });
+  const api = Object.assign(new EventEmitter(), {hap});
+  const platform = new SelvePlatform({...log, error: message => errors.push(message)}, {
+    usbPort: "/dev/mock",
+    shutters: [{device: 1}, {name: "Invalid", device: "2"}, {name: "Bedroom", device: 0}, {name: "Office", device: 63}],
+  }, api);
+  platform.accessories(accessories => assert.deepEqual(accessories.map(a => a.name), ["Bedroom", "Office"]));
+  assert.deepEqual(requested, [0, 63]);
+  assert.equal(errors.length, 2);
+  const [service] = services;
+  let shutdown = false;
+  service.eventEmitter.once("shutdown", () => { shutdown = true; });
+  api.emit("shutdown");
+  assert.equal(shutdown, true);
+  await assert.rejects(service.sendStop(0), /shut down/);
+});
+
+test("remote movement notifies HomeKit in both directions without exceeding position bounds", () => {
+  const {covering, usb} = setup();
+  const current = covering.getCharacteristic(hap.Characteristic.CurrentPosition);
+  const target = covering.getCharacteristic(hap.Characteristic.TargetPosition);
+  report(usb, 0, 2);
+  report(usb, 0, 1);
+  assert.equal(current.value, 0);
+  report(usb, 60, 1);
+  assert.equal(current.value, 59);
+  assert.equal(target.value, 60);
+  report(usb, 100, 2);
+  report(usb, 100, 0);
+  assert.equal(current.value, 100);
+  report(usb, 40, 0);
+  assert.equal(current.value, 41);
+  assert.equal(target.value, 40);
+  usb.eventEmitter.emit("shutdown");
 });
 
 test("preserves accessory names and optional service subtypes", () => {
