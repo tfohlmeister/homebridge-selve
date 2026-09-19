@@ -335,3 +335,56 @@ test("waits for a slow asynchronous close before opening a replacement", async (
   assert.deepEqual(replacement.writes, [createRequestUpdateCommand(4)]);
   service.shutdown();
 });
+
+test("rejects malformed, unrelated and out-of-range status messages", () => {
+  for (const xml of [
+    "<methodCall>", "<unknown/>",
+    "<methodResponse><array><string>other.method</string></array></methodResponse>",
+    ...[[-1, 1, 0], [64, 1, 0], [4, 1, -1], [4, 1, 65536], [4, 1], [4, 1, "9007199254740993"]]
+      .map(values => `<methodCall><methodName>selve.GW.event.device</methodName><array>${values.map(v => `<int>${v}</int>`).join("")}</array></methodCall>`),
+  ]) {
+    assert.equal(parseCommeoStateMessage(xml), undefined, xml);
+  }
+});
+
+test("reports gateway faults without fabricating state and accepts the next valid frame", async () => {
+  const port = new MockSerialPort();
+  const errors = [];
+  const service = new USBRfService({...log, error: (...args) => errors.push(args)}, "/dev/mock", {
+    serialPortFactory: () => port, commandDelayMs: 0,
+  });
+  const states = [];
+  service.eventEmitter.on("4", state => states.push(state));
+  await service.requestUpdate(4);
+  port.emit("data", Buffer.from('<methodResponse><fault><string>Receiver missing</string></fault></methodResponse>'));
+  port.emit("data", Buffer.from('<methodResponse><array><string>other.method</string></array></methodResponse>'));
+  assert.equal(states.length, 0);
+  assert.match(errors[0].join(" "), /Receiver missing/);
+  port.emit("data", Buffer.from('<methodCall><methodName>selve.GW.event.device</methodName><array><int>4</int><int>1</int><int>0</int></array></methodCall>'));
+  assert.equal(states.length, 1);
+  service.shutdown();
+});
+
+for (const failure of ["write error", "drain timeout", "throwing open"]) {
+  test(`recovers after ${failure} without replaying the failed command`, async () => {
+    const port = new MockSerialPort();
+    const replacement = new MockSerialPort();
+    if (failure === "write error") port.write = (_, cb) => cb(new Error("Write failed"));
+    if (failure === "drain timeout") port.drain = () => {};
+    if (failure === "throwing open") port.open = () => { throw new Error("Open failed"); };
+    let attempts = 0;
+    const service = mockService(null, {serialPortFactory: () => attempts++ === 0 ? port : replacement, timeoutMs: 50});
+    await assert.rejects(service.sendMovePosition(4, 0), /failed|draining/);
+    await service.requestUpdate(4);
+    assert.deepEqual(replacement.writes, [createRequestUpdateCommand(4)]);
+    service.shutdown();
+  });
+}
+
+test("routes intermediate commands through the ordered transport", async () => {
+  const port = new MockSerialPort();
+  const service = mockService(port);
+  await service.sendMoveIntermediatePosition(4, 2);
+  assert.deepEqual(port.writes, [createMoveIntermediatePositionCommand(4, 2)]);
+  service.shutdown();
+});

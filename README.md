@@ -1,4 +1,7 @@
 # Selve Roller Shutter Accessory
+[![Compatibility](https://github.com/tfohlmeister/homebridge-selve/actions/workflows/ci.yml/badge.svg)](https://github.com/tfohlmeister/homebridge-selve/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/tfohlmeister/homebridge-selve/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/tfohlmeister/homebridge-selve/actions/workflows/codeql-analysis.yml)
+
 Exposes up to 64 roller shutters using a Selve USB-RF module paired with Selve Commeo receivers.
 
 Version 3 supports Homebridge `^1.8.0 || ^2.0.0` and Node.js `^22.12.0 || ^24.0.0 || ^26.0.0`. Node.js 26 requires Homebridge 2.3 or newer. Older Node.js and Homebridge versions are no longer supported, and the plugin now uses ES modules.
@@ -70,14 +73,15 @@ You can add another virtual button for stopping any current movement. Simply add
 
 ## Plugin Development
 
-Use Node.js 24 and the pnpm version declared in `package.json`.
+Use the Node.js 24 LTS version in `.node-version` and the pnpm version declared in `package.json`.
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm lint
-pnpm test
-pnpm test:runtime
+pnpm check
 ```
 
 `pnpm watch` uses `.homebridge-dev/config.json`. Give this test bridge a separate identity and stop other instances using the same USB gateway.
 Build an installable package with `pnpm build && pnpm pack`.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the compatibility matrix, coverage,
+dependency maintenance and the staged release process.

@@ -2,41 +2,53 @@ name: Publish
 
 on:
   release:
-    types: [created]
+    types: [published]
+  # Exercise the complete flow without uploading anything to npm.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [22.x, 24.x, 26.x]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-      - uses: pnpm/action-setup@v4
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm build
-      - run: pnpm test
-      - run: pnpm pack --dry-run
+  test:
+    uses: ./.github/workflows/ci.yml
 
-  publish-npm:
-    needs: build
+  stage-npm:
+    needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.0.0
         with:
-          node-version: 22.x
-          registry-url: https://registry.npmjs.org/
-      - uses: pnpm/action-setup@v4
+          node-version-file: .node-version
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm build
-      - run: pnpm test
-      - run: pnpm pack --dry-run
-      - run: pnpm publish --no-git-checks
+      - name: Check release version
+        if: github.event_name == 'release'
         env:
-          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: node --input-type=module -e 'import fs from "node:fs"; import assert from "node:assert/strict"; const {version} = JSON.parse(fs.readFileSync("package.json")); assert.equal(process.env.RELEASE_TAG, "v" + version, "Release tag must match package.json");'
+      - run: pnpm pack --out homebridge-selve.tgz
+      - name: Validate staging without publishing
+        run: pnpm stage publish homebridge-selve.tgz --dry-run --access public --tag latest --no-git-checks
+      - name: Stage package using npm Trusted Publishing
+        if: github.event_name == 'release'
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
+          NPM_DIST_TAG: ${{ github.event.release.prerelease && 'next' || 'latest' }}
+        run: pnpm stage publish homebridge-selve.tgz --access public --tag "$NPM_DIST_TAG" --no-git-checks
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: release-package
+          path: homebridge-selve.tgz
+          retention-days: 30
+      # An npm owner performs the final stage approval with 2FA.
