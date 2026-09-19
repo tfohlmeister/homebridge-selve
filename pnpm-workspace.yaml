@@ -1,3 +1,9 @@
+# Disabled so pnpm does not record its own version pin as a second YAML document
+# in pnpm-lock.yaml: GitHub's dependency graph parses only the first document and
+# would then miss every project dependency. pnpm/action-setup pins the pnpm version
+# instead, reading the packageManager field in package.json.
+pmOnFail: ignore
+
 allowBuilds:
   '@serialport/bindings-cpp': true
 
