@@ -34,6 +34,6 @@ For 3.0.0, wait for Mateusz's physical USB unplug/replug confirmation on PR #22 
 
 The npm Trusted Publisher must name owner `tfohlmeister`, repository `homebridge-selve`, and workflow `publish.yml`. Keep direct publishing disabled; no GitHub environment or stored npm token is needed.
 
-After merging the maintenance PR, remove the obsolete `NPM_TOKEN` repository secret and configure these required checks on `main` with an up-to-date branch: `Quality`, `Analyse`, `test (22.x, 1.8.0)`, `test (22.x, 2.x)`, `test (24.x, 1.8.0)`, `test (24.x, 2.x)` and `test (26.x, 2.x)`. Keep the existing one-review requirement. These repository settings are applied separately from the versioned workflows after the PR has been reviewed.
+`main` is protected. It requires one approving review, an up-to-date branch, and the checks `Quality`, `Analyse`, `test (22.x, 1.8.0)`, `test (22.x, 2.x)`, `test (24.x, 1.8.0)`, `test (24.x, 2.x)` and `test (26.x, 2.x)`. A new push dismisses stale approvals. The repository stores no npm token; publishing authenticates through Trusted Publishing alone. These settings live in the repository configuration rather than in the versioned workflows, so renaming a job means updating them there as well.
 
 Run the **Publish** workflow manually for a full compatibility, packaging and staging dry run. A manual run never uploads a package to npm. It cannot verify the registry-side OIDC configuration or provenance of a real publication.
