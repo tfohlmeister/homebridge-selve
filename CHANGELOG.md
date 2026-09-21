@@ -1,4 +1,4 @@
-#### 3.0.0 (unreleased)
+#### 3.0.0 (2026-09-21)
 
 * Require Node.js 22.12+, 24 or 26 and Homebridge 1.8+ or 2.x; Node.js 26 requires Homebridge 2.3+. Switch to ES modules and SerialPort 13.
 * Recover status automatically after USB failures or missed replies, with bounded retry backoff.
