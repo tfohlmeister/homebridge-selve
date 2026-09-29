@@ -8,6 +8,13 @@ Version 3 supports Homebridge `^1.8.0 || ^2.0.0` and Node.js `^22.12.0 || ^24.0.
 
 When upgrading, back up your Homebridge configuration and keep the existing shutter names and device IDs to preserve your HomeKit setup.
 
+**Upcoming 4.0.0 breaking change:** the dynamic platform supports one Selve
+platform per Homebridge process. Before upgrading a multi-gateway setup, put
+each gateway in a separate [child bridge](https://github.com/homebridge/homebridge/wiki/Child-Bridges)
+or Homebridge instance. Otherwise, only the first gateway loads. Moving shutters
+to another bridge requires re-pairing and may require rebuilding scenes and
+automations. Back up Homebridge first.
+
 ## Maintenance
 The 2023 deprecation notice has been lifted and the project is open for contributions again. I moved my own setup to [Home Assistant](https://home-assistant.io) and no longer run the plugin day to day, so maintenance is handed over to contributors who do. Issues and pull requests are welcome.
 

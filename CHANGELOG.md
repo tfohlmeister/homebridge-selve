@@ -1,3 +1,8 @@
+#### 4.0.0 (Unreleased)
+
+* **Breaking:** migrate to a dynamic platform, with one Selve platform per Homebridge process. Existing multi-gateway setups must move gateways to separate child bridges or instances before upgrading; moving bridges requires re-pairing and may require rebuilding scenes and automations.
+* Preserve accessory identities for unchanged single-gateway setups. Skip invalid shutter entries without disabling valid shutters or removing cached accessories.
+
 #### 3.0.0 (2026-09-21)
 
 * Require Node.js 22.12+, 24 or 26 and Homebridge 1.8+ or 2.x; Node.js 26 requires Homebridge 2.3+. Switch to ES modules and SerialPort 13.

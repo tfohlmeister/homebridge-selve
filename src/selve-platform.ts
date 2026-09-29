@@ -4,6 +4,7 @@ import {
   type Logging,
   type PlatformAccessory,
 } from 'homebridge';
+import { SelveAcessoryConfig } from './data/selve-accessory-config.js';
 import { SelvePlatformConfig } from './data/selve-platform-config.js';
 import { SelveShutter } from './selve-shutter-accessory.js';
 import { USBRfService } from './util/usb-rf.service.js';
@@ -78,24 +79,48 @@ export class SelvePlatform implements DynamicPlatformPlugin {
     }
     const names = new Set<string>();
     const devices = new Set<number>();
-    for (const shutter of this.config.shutters) {
-      if (!shutter || typeof shutter.name !== 'string' || !shutter.name.trim() ||
-          !Number.isInteger(shutter.device) || shutter.device < 0 || shutter.device > 63 ||
-          names.has(shutter.name) || devices.has(shutter.device) ||
-          [shutter.showIntermediate1, shutter.showIntermediate2, shutter.showStop]
-            .some(value => value !== undefined && typeof value !== 'boolean')) {
-        this.log.error('Selve is inactive: shutters need unique names, unique integer device IDs (0–63), and boolean button options. Cached accessories are retained.');
+    const shutters: SelveAcessoryConfig[] = [];
+    let hasInvalidEntries = false;
+    for (const [index, shutter] of this.config.shutters.entries()) {
+      const validName = typeof shutter?.name === 'string' && shutter.name.trim().length > 0;
+      const validDevice = Number.isInteger(shutter?.device) && shutter.device >= 0 && shutter.device <= 63;
+      const label = `shutters[${index}]${validName ? ` (${JSON.stringify(shutter.name)})` : ''}`;
+      if (validName && names.has(shutter.name)) {
+        this.log.error(`Selve is inactive: ${label} has a duplicate name. Names must be unique; cached accessories are retained.`);
         return;
       }
-      names.add(shutter.name);
-      devices.add(shutter.device);
+      if (validDevice && devices.has(shutter.device)) {
+        this.log.error(`Selve is inactive: ${label} has duplicate device ID ${shutter.device}. Device IDs must be unique; cached accessories are retained.`);
+        return;
+      }
+      if (validName) {
+        names.add(shutter.name);
+      }
+      if (validDevice) {
+        devices.add(shutter.device);
+      }
+      if (!validName || !validDevice) {
+        hasInvalidEntries = true;
+        const reason = !validName ? 'name must be a non-empty string' : 'device must be an integer from 0 to 63';
+        this.log.error(`Skipping ${label}: ${reason}. Valid shutters will run; cached accessories will not be removed until settings are corrected.`);
+        continue;
+      }
+
+      const normalized = {...shutter};
+      for (const option of ['showIntermediate1', 'showIntermediate2', 'showStop'] as const) {
+        if (shutter[option] !== undefined && typeof shutter[option] !== 'boolean') {
+          this.log.warn(`${label}: ${option} must be a boolean; preserving the legacy ${shutter[option] ? 'enabled' : 'disabled'} behavior. Use true or false in the configuration.`);
+        }
+        normalized[option] = Boolean(shutter[option]);
+      }
+      shutters.push(normalized);
     }
 
     const configured = new Set<string>();
-    if (this.config.shutters.length > 0) {
+    if (shutters.length > 0) {
       this.usbService = new USBRfService(this.log, this.config.usbPort);
     }
-    for (const shutter of this.config.shutters) {
+    for (const shutter of shutters) {
       // Homebridge's static-platform loader uses `${platformIdentifier}:${name}`.
       // Keep that exact identity, including the qualified alias if present in config.
       const uuid = this.api.hap.uuid.generate(`${this.config.platform || PLATFORM_NAME}:${shutter.name}`);
@@ -110,7 +135,9 @@ export class SelvePlatform implements DynamicPlatformPlugin {
         this.accessories.set(uuid, accessory);
       }
     }
-    const removed = [...this.accessories.values()].filter(accessory => !configured.has(accessory.UUID));
+    // An invalid entry may refer to a cached shutter whose identity we cannot
+    // recover. Only prune against a fully valid configuration snapshot.
+    const removed = hasInvalidEntries ? [] : [...this.accessories.values()].filter(accessory => !configured.has(accessory.UUID));
     if (removed.length > 0) {
       this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, removed);
       for (const accessory of removed) {

@@ -112,9 +112,8 @@ test('an explicit empty array removes cached shutters without opening USB', t =>
 });
 
 const invalidConfigs = [null, {}, {usbPort: 3, shutters: []}, {usbPort: ' ', shutters: []}, {usbPort: '/dev/mock'},
-  {...config, shutters: {}}, ...[null, {}, {name: ' ', device: 0}, {name: 'Bad', device: '0'}, {name: 'Bad', device: NaN},
-    {name: 'Bad', device: -1}, {name: 'Bad', device: 64}, {name: 'Bad', device: 0.5}, {name: 'Bad', device: 1, showStop: 'false'},
-    {name: 'Bedroom', device: 1}, {name: 'Duplicate', device: 0}].map(shutter => ({...config, shutters: [...config.shutters, shutter]}))];
+  {...config, shutters: {}}, ...[{name: 'Bedroom', device: 1}, {name: 'Duplicate', device: 0},
+    {name: 'Bedroom', device: '1'}, {device: 0}].map(shutter => ({...config, shutters: [...config.shutters, shutter]}))];
 for (const [index, settings] of invalidConfigs.entries()) {
   test(`invalid configuration ${index} retains cached accessories, rejects control, and never touches USB`, async t => {
     const first = setup(t); first.launch();
@@ -170,4 +169,80 @@ test('a repeated launch event does not duplicate USB requests or accessories', t
   const next = setup(t); next.launch(); next.launch();
   assert.deepEqual(next.calls.requested, [0]);
   assert.equal(next.calls.registered.length, 1);
+});
+
+const invalidShutters = [null, {}, {name: ' ', device: 1}, {name: 'Bad', device: '1'},
+  {name: 'Bad', device: NaN}, {name: 'Bad', device: -1}, {name: 'Bad', device: 64}, {name: 'Bad', device: 0.5}];
+for (const [index, invalidShutter] of invalidShutters.entries()) {
+  test(`malformed shutter ${index} leaves valid shutters working and retains every cached accessory`, async t => {
+    const first = setup(t, {...config, shutters: [...config.shutters, {name: 'Bad', device: 1}, {name: 'Old', device: 2}]});
+    first.launch();
+    const cached = first.calls.registered.map(restore); first.api.emit('shutdown');
+    const settings = {...config, shutters: [...config.shutters, invalidShutter]};
+    const next = setup(t, settings, cached); next.launch();
+    assert.deepEqual(next.calls.requested, [0]);
+    assert.deepEqual(next.calls.updated, [cached[0]]);
+    assert.deepEqual(next.calls.registered, []);
+    assert.deepEqual(next.calls.removed, [], 'Do not prune even an omitted accessory while settings are incomplete');
+    assert.equal(next.calls.errors.length, 1);
+    assert.match(next.calls.errors[0], /Skipping shutters\[1\].*(name|device) must/);
+    if (invalidShutter?.name === 'Bad') { assert.match(next.calls.errors[0], /Bad/); }
+    const {Service, Characteristic, HAPStatus} = next.api.hap;
+    next.calls.usb[0].eventEmitter.emit('0', {CurrentPosition: 47, PositionState: 2, ObstructionDetected: false});
+    assert.equal(await cached[0].getService(Service.WindowCovering).getCharacteristic(Characteristic.CurrentPosition).handleGetRequest(), 47);
+    for (const accessory of cached.slice(1)) {
+      await assert.rejects(accessory.getService(Service.WindowCovering).getCharacteristic(Characteristic.CurrentPosition).handleGetRequest(),
+        error => error === HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+      await assert.rejects(accessory.getService(Service.WindowCovering).getCharacteristic(Characteristic.TargetPosition).handleSetRequest(50));
+    }
+  });
+}
+
+test('all malformed entries retain the cache without opening USB', t => {
+  const first = setup(t); first.launch();
+  const cached = first.calls.registered.map(restore); first.api.emit('shutdown');
+  const next = setup(t, {...config, shutters: [{name: 'Bedroom', device: '0'}]}, cached); next.launch();
+  assert.deepEqual(next.calls.requested, []);
+  assert.deepEqual(next.calls.updated, []);
+  assert.deepEqual(next.calls.removed, []);
+});
+
+test('correcting a malformed entry restores it and permits intentional removal again', t => {
+  const first = setup(t, {...config, shutters: [...config.shutters, {name: 'Office', device: 3}, {name: 'Removed', device: 5}]});
+  first.launch();
+  let cached = first.calls.registered.map(restore); first.api.emit('shutdown');
+  const partial = setup(t, {...config, shutters: [...config.shutters, {name: 'Office', device: '3'}]}, cached); partial.launch();
+  assert.deepEqual(partial.calls.removed, []);
+  cached = cached.map(restore); partial.api.emit('shutdown');
+  const fixed = setup(t, {...config, shutters: [...config.shutters, {name: 'Office', device: 3}]}, cached); fixed.launch();
+  assert.deepEqual(fixed.calls.requested, [0, 3]);
+  assert.deepEqual(fixed.calls.updated.map(a => a.displayName), ['Bedroom', 'Office']);
+  assert.deepEqual(fixed.calls.removed.map(a => a.displayName), ['Removed']);
+});
+
+for (const [option, subtype] of [['showStop', '3'], ['showIntermediate1', '1'], ['showIntermediate2', '2']]) {
+  test(`${option} preserves legacy truthy/falsy settings without disabling shutters`, t => {
+    for (const value of ['true', 'false', 1, 0, null]) {
+      const settings = {...config, shutters: [{name: 'Bedroom', device: 0, [option]: value}]};
+      const next = setup(t, settings); next.launch();
+      assert.deepEqual(next.calls.requested, [0]);
+      assert.deepEqual(next.calls.errors, []);
+      assert.equal(next.calls.warnings.length, 1);
+      assert.ok(next.calls.warnings[0].includes(option));
+      assert.match(next.calls.warnings[0], /shutters\[0\].*Bedroom.*legacy/);
+      assert.equal(!!next.calls.registered[0].getServiceById(next.api.hap.Service.Switch, subtype), !!value);
+      assert.equal(settings.shutters[0][option], value, 'Do not mutate the supplied config');
+      next.api.emit('shutdown');
+    }
+  });
+}
+
+test('legacy string button flags keep cached switches and their identities', t => {
+  const first = setup(t); first.launch();
+  const cached = restore(first.calls.registered[0]); first.api.emit('shutdown');
+  const stop = cached.getServiceById(first.api.hap.Service.Switch, '3');
+  const next = setup(t, {...config, shutters: [{name: 'Bedroom', device: 0, showStop: 'true'}]}, [cached]); next.launch();
+  assert.deepEqual(next.calls.requested, [0]);
+  assert.deepEqual(next.calls.removed, []);
+  assert.equal(cached.getServiceById(next.api.hap.Service.Switch, '3'), stop);
 });

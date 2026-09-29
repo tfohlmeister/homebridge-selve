@@ -47,7 +47,7 @@ jobs:
           pkg.devDependencies.homebridge = process.env.HOMEBRIDGE_VERSION;
           fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           NODE
-          pnpm install
+          pnpm install --no-frozen-lockfile
           pnpm list homebridge --depth 0
       - run: pnpm test
       - run: pnpm test:runtime

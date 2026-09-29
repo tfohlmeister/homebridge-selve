@@ -99,10 +99,21 @@ try {
   assert.deepEqual(identifiers(storage), after, 'Restart retains all AIDs and IIDs');
   await run('Invalid configuration retains cache', process.cwd(), [{...platform, usbPort: ''}], /Selve is inactive/);
   assert.equal(cached(storage)[0].UUID, firstCache[0].UUID);
+  await run('Partial configuration keeps valid shutters running', process.cwd(), [{...platform, shutters: [
+    {...platform.shutters[0], device: '4'}, {name: 'Valid Shutter', device: 5, showStop: 'true'},
+  ]}], /(?=.*Skipping shutters)(?=.*Finished initializing 1 shutter)(?=.*(?:ENOENT|No such file))/s);
+  const partialCache = cached(storage);
+  assert.equal(partialCache.length, 2);
+  assert.ok(partialCache.some(accessory => accessory.UUID === firstCache[0].UUID), 'Malformed shutter keeps its cached identity');
+  assert.ok(partialCache.find(accessory => accessory.displayName === 'Valid Shutter').services.some(service => service.subtype === '3'),
+    'A legacy string flag still exposes the stop button');
+  await run('Corrected configuration resumes cache reconciliation', process.cwd(), [platform], /ENOENT|No such file/i);
+  assert.equal(cached(storage).length, 1);
+  assert.equal(cached(storage)[0].UUID, firstCache[0].UUID);
   await run('Explicit removal', process.cwd(), [{...platform, shutters: []}], /Finished initializing 0 shutter/);
   assert.deepEqual(cached(storage), []);
   await run('Installed without configuration', process.cwd(), [], /Registering platform/, join(directory, 'unconfigured'));
-  console.log('Static-to-dynamic AIDs/IIDs, cached restart, invalid configuration, removal, and unconfigured startup verified. No real USB device was used.');
+  console.log('Static-to-dynamic AIDs/IIDs, cached restart, invalid/partial configuration, recovery, removal, and unconfigured startup verified. No real USB device was used.');
 } finally {
   rmSync(directory, {recursive: true, force: true});
 }
