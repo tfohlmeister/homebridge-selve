@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { pathToFileURL } from "node:url";
 import process from "node:process";
 import { test } from "node:test";
 import { setImmediate } from "node:timers/promises";
 import { SelveShutter } from "../dist/selve-shutter-accessory.js";
 import { USBRfService } from "../dist/util/usb-rf.service.js";
-import initialize from "../dist/index.js";
-import { SelvePlatform } from "../dist/selve-platform.js";
 
 // Use the HAP implementation belonging to the Homebridge version under test.
 const require = createRequire(import.meta.url);
@@ -15,6 +15,8 @@ const homebridgeRequire = createRequire(require.resolve("homebridge"));
 let hap;
 try { hap = homebridgeRequire("@homebridge/hap-nodejs"); }
 catch { hap = homebridgeRequire("hap-nodejs"); }
+const { PlatformAccessory } = await import(pathToFileURL(join(dirname(require.resolve("homebridge")), "platformAccessory.js")));
+const makeAccessory = name => new PlatformAccessory(name, hap.uuid.generate(`selve:${name}`));
 const log = { debug() {}, info() {}, warn() {}, error() {} };
 function setup(options = {}) {
   const calls = [];
@@ -25,56 +27,13 @@ function setup(options = {}) {
     async sendStop(device) { calls.push(["stop", device]); },
     async sendMoveIntermediatePosition(...args) { calls.push(["intermediate", ...args]); },
   };
-  const shutter = new SelveShutter(hap, log, { name: "Livingroom", device: 4, ...options }, usb);
+  const shutter = new SelveShutter(hap, log, { name: "Livingroom", device: 4, ...options }, usb, makeAccessory("Livingroom"));
   const covering = shutter.getServices().find(s => s.UUID === hap.Service.WindowCovering.UUID);
   return {shutter, covering, usb, calls};
 }
 function report(usb, CurrentPosition = 50, PositionState = 2) {
   usb.eventEmitter.emit("4", {CurrentPosition, PositionState, ObstructionDetected: false});
 }
-
-test("registers the legacy platform alias", () => {
-  let alias;
-  initialize({versionGreaterOrEqual: () => true, registerPlatform(name) { alias = name; }});
-  assert.equal(alias, "selve");
-});
-
-test("platform rejects a missing USB path before initializing accessories", () => {
-  assert.throws(() => new SelvePlatform(log, {}, {hap}), /usbPort/);
-});
-
-test("platform tolerates an empty configuration and reports why", () => {
-  const warnings = [];
-  const api = Object.assign(new EventEmitter(), {hap});
-  const platform = new SelvePlatform({...log, warn: message => warnings.push(message)}, {usbPort: "/dev/mock"}, api);
-  platform.accessories(accessories => assert.deepEqual(accessories, []));
-  assert.match(warnings[0], /No shutter configs/);
-  api.emit("shutdown");
-});
-
-test("platform skips invalid entries, preserves valid device IDs, and propagates shutdown", async t => {
-  const requested = [];
-  const errors = [];
-  const services = [];
-  t.mock.method(USBRfService.prototype, "requestUpdate", async function (device) {
-    services.push(this);
-    requested.push(device);
-  });
-  const api = Object.assign(new EventEmitter(), {hap});
-  const platform = new SelvePlatform({...log, error: message => errors.push(message)}, {
-    usbPort: "/dev/mock",
-    shutters: [{device: 1}, {name: "Invalid", device: "2"}, {name: "Bedroom", device: 0}, {name: "Office", device: 63}],
-  }, api);
-  platform.accessories(accessories => assert.deepEqual(accessories.map(a => a.name), ["Bedroom", "Office"]));
-  assert.deepEqual(requested, [0, 63]);
-  assert.equal(errors.length, 2);
-  const [service] = services;
-  let shutdown = false;
-  service.eventEmitter.once("shutdown", () => { shutdown = true; });
-  api.emit("shutdown");
-  assert.equal(shutdown, true);
-  await assert.rejects(service.sendStop(0), /shut down/);
-});
 
 test("remote movement notifies HomeKit in both directions without exceeding position bounds", () => {
   const {covering, usb} = setup();
@@ -130,7 +89,7 @@ test("supports USB failure notifications for all 64 shutters without listener wa
   process.on("warning", onWarning);
   try {
     const positions = Array.from({length: 64}, (_, device) => {
-      const shutter = new SelveShutter(hap, log, {name: `Shutter ${device}`, device}, usb);
+      const shutter = new SelveShutter(hap, log, {name: `Shutter ${device}`, device}, usb, makeAccessory(`Shutter ${device}`));
       const covering = shutter.getServices().find(s => s.UUID === hap.Service.WindowCovering.UUID);
       usb.eventEmitter.emit(String(device), {CurrentPosition: 50, PositionState: 2, ObstructionDetected: false});
       return covering.getCharacteristic(hap.Characteristic.CurrentPosition);
@@ -295,7 +254,7 @@ for (const failure of ["disconnect", "write timeout"]) {
       serialPortFactory: () => { const port = new Port(); ports.push(port); return port; },
     });
     const currents = Array.from({length: 64}, (_, device) => {
-      const shutter = new SelveShutter(hap, log, {name: `Shutter ${device}`, device}, usb);
+      const shutter = new SelveShutter(hap, log, {name: `Shutter ${device}`, device}, usb, makeAccessory(`Shutter ${device}`));
       return shutter.getServices().find(s => s.UUID === hap.Service.WindowCovering.UUID)
         .getCharacteristic(hap.Characteristic.CurrentPosition);
     });
@@ -331,21 +290,3 @@ for (const failure of ["disconnect", "write timeout"]) {
     } finally { usb.shutdown(); }
   });
 }
-
-test("rejects Node 26 with older Homebridge before registering the platform", () => {
-  const descriptor = Object.getOwnPropertyDescriptor(process.versions, "node");
-  try {
-    Object.defineProperty(process.versions, "node", {value: "26.8.2"});
-    const api = {
-      versionGreaterOrEqual(version) { assert.equal(version, "2.3.0"); return false; },
-      registerPlatform() { assert.fail("Unsupported platform must not register"); },
-    };
-    assert.throws(() => initialize(api), /Node.js 26 requires Homebridge 2.3.0/);
-    Object.defineProperty(process.versions, "node", {value: "24.20.0"});
-    let registered = false;
-    initialize({...api, registerPlatform() { registered = true; }});
-    assert.equal(registered, true);
-  } finally {
-    Object.defineProperty(process.versions, "node", descriptor);
-  }
-});

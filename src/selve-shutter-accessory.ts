@@ -1,5 +1,5 @@
 import {
-  type AccessoryPlugin,
+  type PlatformAccessory,
   type CharacteristicValue,
   type HAP,
   type Logging,
@@ -9,7 +9,7 @@ import { CommeoState, HomebridgeStatusState } from "./data/commeo-state.js";
 import { SelveAcessoryConfig } from "./data/selve-accessory-config.js";
 import { USBRfService } from "./util/usb-rf.service.js";
 
-export class SelveShutter implements AccessoryPlugin {
+export class SelveShutter {
   private readonly log: Logging;
   name: string;
 
@@ -30,7 +30,7 @@ export class SelveShutter implements AccessoryPlugin {
   private stopped = false;
   private targetRevision = 0;
 
-  constructor(hap: HAP, log: Logging, config: SelveAcessoryConfig, usbService: USBRfService) {
+  constructor(hap: HAP, log: Logging, config: SelveAcessoryConfig, usbService: USBRfService, accessory: PlatformAccessory) {
     this.log = log;
     this.name = config.name;
     this.device = config.device;
@@ -38,11 +38,15 @@ export class SelveShutter implements AccessoryPlugin {
 
     this.state = new CommeoState();
 
-    this.shutterService = new hap.Service.WindowCovering(this.name);
-    this.informationService = new hap.Service.AccessoryInformation();
-    this.intermediate1SwitchService = new hap.Service.Switch(`${this.name} Position 1`, "1");
-    this.intermediate2SwitchService = new hap.Service.Switch(`${this.name} Position 2`, "2");
-    this.stopSwitchService = new hap.Service.Switch(`${this.name} Stop`, "3");
+    this.shutterService = accessory.getService(hap.Service.WindowCovering)
+      ?? accessory.addService(new hap.Service.WindowCovering(this.name));
+    this.informationService = accessory.getService(hap.Service.AccessoryInformation)!;
+    this.intermediate1SwitchService = accessory.getServiceById(hap.Service.Switch, "1")
+      ?? new hap.Service.Switch(`${this.name} Position 1`, "1");
+    this.intermediate2SwitchService = accessory.getServiceById(hap.Service.Switch, "2")
+      ?? new hap.Service.Switch(`${this.name} Position 2`, "2");
+    this.stopSwitchService = accessory.getServiceById(hap.Service.Switch, "3")
+      ?? new hap.Service.Switch(`${this.name} Stop`, "3");
 
     const requireState = () => {
       if (!this.stateKnown) {
@@ -78,7 +82,8 @@ export class SelveShutter implements AccessoryPlugin {
           if (this.targetRevision === revision) {
             this.targetPosition = previousTarget;
           }
-          throw error;
+          this.log.warn(`[${this.name}] Move failed:`, String(error));
+          throw new hap.HapStatusError(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
       });
 
@@ -92,6 +97,7 @@ export class SelveShutter implements AccessoryPlugin {
 
     this.intermediate1SwitchService
       .getCharacteristic(hap.Characteristic.On)
+      .onGet(() => false)
       .onSet(async (value: CharacteristicValue) => {
         if (!value) {
           return;
@@ -99,6 +105,9 @@ export class SelveShutter implements AccessoryPlugin {
         this.log.info(`[${this.name}] Set to move to intermediate position 1`);
         try {
           await this.usbService.sendMoveIntermediatePosition(this.device, 1);
+        } catch (error) {
+          this.log.warn(`[${this.name}] Button command failed:`, String(error));
+          throw new hap.HapStatusError(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         } finally {
           setTimeout(() => {
             this.intermediate1SwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
@@ -108,6 +117,7 @@ export class SelveShutter implements AccessoryPlugin {
 
     this.intermediate2SwitchService
       .getCharacteristic(hap.Characteristic.On)
+      .onGet(() => false)
       .onSet(async (value: CharacteristicValue) => {
         if (!value) {
           return;
@@ -115,6 +125,9 @@ export class SelveShutter implements AccessoryPlugin {
         this.log.info(`[${this.name}] Set to move to intermediate position 2`);
         try {
           await this.usbService.sendMoveIntermediatePosition(this.device, 2);
+        } catch (error) {
+          this.log.warn(`[${this.name}] Button command failed:`, String(error));
+          throw new hap.HapStatusError(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         } finally {
           setTimeout(() => {
             this.intermediate2SwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
@@ -124,6 +137,7 @@ export class SelveShutter implements AccessoryPlugin {
 
     this.stopSwitchService
       .getCharacteristic(hap.Characteristic.On)
+      .onGet(() => false)
       .onSet(async (value: CharacteristicValue) => {
         if (!value) {
           return;
@@ -131,6 +145,9 @@ export class SelveShutter implements AccessoryPlugin {
         this.log.info(`[${this.name}] Set to stop`);
         try {
           await this.usbService.sendStop(this.device);
+        } catch (error) {
+          this.log.warn(`[${this.name}] Button command failed:`, String(error));
+          throw new hap.HapStatusError(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         } finally {
           setTimeout(() => {
             this.stopSwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
@@ -138,7 +155,7 @@ export class SelveShutter implements AccessoryPlugin {
         }
       });
 
-    this.informationService = new hap.Service.AccessoryInformation()
+    this.informationService
       .setCharacteristic(hap.Characteristic.Manufacturer, "Selve")
       .setCharacteristic(hap.Characteristic.Model, "Selve")
       .setCharacteristic(hap.Characteristic.SerialNumber, this.name);
@@ -199,6 +216,17 @@ export class SelveShutter implements AccessoryPlugin {
       config.showIntermediate2 ? this.intermediate2SwitchService : null,
       config.showStop ? this.stopSwitchService : null,
     ].filter((s) => !!s) as Array<Service>;
+
+    for (const service of [...accessory.services]) {
+      if (!this.services.includes(service)) {
+        accessory.removeService(service);
+      }
+    }
+    for (const service of this.services) {
+      if (!accessory.services.includes(service)) {
+        accessory.addService(service);
+      }
+    }
 
     log.info(`Selve shutter ${this.name} created!`);
   }

@@ -1,7 +1,7 @@
 {
   "pluginAlias": "selve",
   "pluginType": "platform",
-  "singular": false,
+  "singular": true,
   "headerDisplay": "*Important:* For this plugin to work, you'll need to first pair the Selve USB-RF module manually with all shutters!",
   "schema": {
     "type": "object",
@@ -14,7 +14,7 @@
       },
       "usbPort": {
         "title": "USB Port",
-        "description": "Device path to Selve USB-RF module (e.g. /dev/tty.USB0)",
+        "description": "Device path to Selve USB-RF module (e.g. /dev/ttyUSB0)",
         "type": "string",
         "required": true
       },
