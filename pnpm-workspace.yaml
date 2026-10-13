@@ -8,4 +8,11 @@ allowBuilds:
   '@serialport/bindings-cpp': true
 
 overrides:
-  brace-expansion: ^5.0.9
+  brace-expansion: ^5.0.12
+
+# braces <=3.0.3 has no patched release. It reaches the tree only through
+# nodemon > chokidar@3 (dev-only, `pnpm watch`), and the patterns it expands
+# come from our own nodemon.json. Remove once a fixed braces is published.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm
