@@ -28,9 +28,9 @@ jobs:
           - node: 26.x
             homebridge: 2.x
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: pnpm/action-setup@v6.1.0
-      - uses: actions/setup-node@v7.1.0
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           check-latest: true
@@ -46,9 +46,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: pnpm/action-setup@v6.1.0
-      - uses: actions/setup-node@v7.1.0
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: pnpm
@@ -56,7 +56,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm test:coverage
       - run: pnpm pack --dry-run
-      - uses: actions/upload-artifact@v7.0.2
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage

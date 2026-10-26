@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import process from "node:process";
@@ -13,9 +14,14 @@ const require = createRequire(import.meta.url);
 const homebridgeRoot = dirname(dirname(require.resolve("homebridge")));
 const executable = ["homebridge.js", "homebridge"].map(name => join(homebridgeRoot, "bin", name)).find(existsSync);
 assert.ok(executable, "Homebridge executable exists");
+// A fixed port can collide with the runner's ephemeral outbound ports, so ask the OS for a free one.
+const probe = createServer();
+await new Promise(resolve => probe.listen(0, resolve));
+const port = probe.address().port;
+await new Promise(resolve => probe.close(resolve));
 const directory = mkdtempSync(join(tmpdir(), "selve-smoke-"));
 writeFileSync(join(directory, "config.json"), JSON.stringify({
-  bridge: {name: "Selve Test", username: "02:00:00:00:00:18", port: 51918, pin: "031-45-154", advertiser: "ciao"},
+  bridge: {name: "Selve Test", username: "02:00:00:00:00:18", port, pin: "031-45-154", advertiser: "ciao"},
   plugins: ["homebridge-selve"],
   platforms: [{platform: "selve", name: "Selve Test", usbPort: "/dev/selve-test-missing", shutters: [{name: "Test Shutter", device: 4}]}],
 }));
