@@ -1,6 +1,6 @@
 # Contributing
 
-Use the Node 24 LTS patch in `.node-version` and any pnpm 12 release: `devEngines.packageManager` in `package.json` pins only the major (`^12`). pnpm records the resolved release under `packageManagerDependencies` in the first YAML document of `pnpm-lock.yaml` and switches to it on its own. In CI, `pnpm/action-setup` installs a pnpm 12 that switches the same way. Corepack resolves the range from 0.36 on (bundled with Node 24.21); older releases reject it. npm refuses to run in the project directory because `devEngines` names pnpm.
+Use the Node 24 LTS patch in `.node-version` and any pnpm 12 release: `devEngines.packageManager` in `package.json` pins only the major (`^12`). pnpm records the resolved release under `packageManagerDependencies` in the first YAML document of `pnpm-lock.yaml` and switches to it on its own. In CI, `pnpm/action-setup` installs a pnpm 12 that switches the same way. Corepack resolves the range from 0.36 on (bundled with Node 24.21); older releases reject it. npm and npx refuse to run in the project directory because `devEngines` names pnpm; use `pnpm run`, `pnpm exec` or `pnpm dlx` instead.
 
 ```sh
 pnpm install --frozen-lockfile
