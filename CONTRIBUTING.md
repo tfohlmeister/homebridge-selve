@@ -1,6 +1,6 @@
 # Contributing
 
-Use the Node 24 LTS patch in `.node-version` and the pnpm version pinned in `package.json`. Corepack or `pnpm/action-setup` can install that pnpm version. pnpm does not select it on its own: `pmOnFail: ignore` in `pnpm-workspace.yaml` keeps pnpm's self-management pin out of `pnpm-lock.yaml`, because GitHub's dependency graph reads only the first YAML document of the lockfile and would otherwise miss every project dependency.
+Use the Node 24 LTS patch in `.node-version` and any pnpm 12 release: `devEngines.packageManager` in `package.json` pins only the major (`^12`). pnpm records the resolved release under `packageManagerDependencies` in the first YAML document of `pnpm-lock.yaml` and switches to it on its own. In CI, `pnpm/action-setup` installs a pnpm 12 that switches the same way. Corepack resolves the range from 0.36 on (bundled with Node 24.21); older releases reject it. npm refuses to run in the project directory because `devEngines` names pnpm.
 
 ```sh
 pnpm install --frozen-lockfile

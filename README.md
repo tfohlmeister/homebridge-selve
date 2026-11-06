@@ -73,7 +73,7 @@ You can add another virtual button for stopping any current movement. Simply add
 
 ## Plugin Development
 
-Use the Node.js 24 LTS version in `.node-version` and the pnpm version declared in `package.json`.
+Use the Node.js 24 LTS version in `.node-version` and pnpm 12 (`devEngines.packageManager` in `package.json`); pnpm switches to the 12.x release recorded in `pnpm-lock.yaml` on its own.
 
 ```sh
 pnpm install --frozen-lockfile
