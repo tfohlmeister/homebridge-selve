@@ -3,6 +3,10 @@ allowBuilds:
 
 overrides:
   brace-expansion: ^5.0.12
+  # GHSA-g3hv-75wg-m249 is fixed only in minimatch 11. eslint,
+  # @eslint/config-array, @typescript-eslint/typescript-estree and nodemon
+  # (all dev-only) still declare ^10. Remove once they accept ^11.
+  minimatch: ^11.0.1
 
 # braces <=3.0.3 has no patched release. It reaches the tree only through
 # nodemon > chokidar@3 (dev-only, `pnpm watch`), and the patterns it expands
